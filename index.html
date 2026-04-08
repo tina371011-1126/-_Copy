@@ -96,7 +96,7 @@
 
 <div class="app-container">
     <div id="login-section">
-        <h2>✨ 禪定日誌</h2>
+        <h2>✨ 台科領禪定日誌</h2>
         <p>登入 Google 帳號開啟紀錄</p>
         <div id="g_id_onload" data-client_id="898764620568-6h1uavirukt1k1vpfpvmfdbge74823vm.apps.googleusercontent.com" data-callback="handleCredentialResponse"></div>
         <div class="g_id_signin" data-type="standard"></div>
@@ -240,10 +240,15 @@
         try {
             const res = await fetch(GAS_URL);
             const data = await res.json();
-            allRecords = data.map(r => ({...r, date: String(r.date).split('T')[0]}));
-            allRecords.sort((a,b) => new Date(b.date) - new Date(a.date));
+            
+            // 1. 處理日期格式 2. 進行排序 (降序)
+            allRecords = data.map(r => ({...r, date: String(r.date).split('T')[0]}))
+                             .sort((a, b) => new Date(b.date) - new Date(a.date));
+            
             renderAll();
-        } catch (e) { console.error("Fetch error", e); }
+        } catch (e) { 
+            console.error("Fetch error", e); 
+        }
     }
 
     function renderAll() {
@@ -259,7 +264,9 @@
 
     function renderMyRecords() {
         const container = document.getElementById('my-records-container');
+        // 過濾出自己的紀錄（此時 allRecords 已是排序好的狀態）
         const mine = allRecords.filter(r => r.email === currentUser.email);
+        
         container.innerHTML = mine.map(r => `
             <div class="record-card" style="position:relative;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -355,7 +362,13 @@
             reflection: document.getElementById('input-reflection').value.trim()
         };
         await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
-        allRecords.unshift(data); 
+        // 將新資料加入陣列
+        allRecords.push(data); 
+        
+        // 強制重新排序：日期從大到小 (最新在前)
+        allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        renderAll(); // 重新渲染畫面 
         renderAll();
         alert("儲存成功！");
         btn.innerText = "送出禪定紀錄";
