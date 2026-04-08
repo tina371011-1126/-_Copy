@@ -72,7 +72,7 @@
         .form-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin: 0 0 20px 0; }
         .input-group { background: var(--input-bg); border-radius: 12px; display: flex; align-items: center; padding: 14px 16px; margin-bottom: 12px; border: 1px solid transparent; transition: border 0.2s; }
         .input-group:focus-within { border: 1px solid #D1D5DB; }
-        .input-group input, .input-group select, .input-group textarea { border: none; background: transparent; width: 100%; font-size: 15px; color: var(--text-dark); outline: none; font-weight: 600; }
+        .input-group input, .input-group select, .input-group textarea { border: none; background: transparent; width: 100%; font-size: 15px; color: var(--text-dark); outline: none; font-weight: 600; appearance: none; -webkit-appearance: none; }
         .input-group input::placeholder, .input-group textarea::placeholder { color: var(--text-light-gray); font-weight: 500; }
         .input-row { display: flex; gap: 12px; margin-bottom: 12px; }
         .input-row .input-group { margin-bottom: 0; flex: 1; }
@@ -83,7 +83,7 @@
         }
         .btn-submit.active { background: var(--primary-green); color: white; box-shadow: 0 4px 15px rgba(62,142,126,0.3); }
 
-        /* Partner/Personal Cards */
+        /* Record Cards */
         .list-header { font-size: 14px; font-weight: bold; color: var(--text-gray); margin: 20px 0 15px 5px; }
         .record-card { background: var(--white); border-radius: 24px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 16px; position: relative; overflow: hidden; }
         .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
@@ -94,7 +94,6 @@
         
         .card-info { margin-left: 12px; flex: 1; }
         .card-name { font-size: 15px; font-weight: bold; color: var(--text-dark); }
-        .card-date { font-size: 13px; color: var(--text-light-gray); margin-top: 4px; font-weight: 600; }
         
         .status-badge { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: bold; }
         .status-badge.purple { color: var(--purple-main); }
@@ -172,7 +171,22 @@
                     <span style="color:#9CA3AF; font-size:13px; font-weight:bold; white-space:nowrap;">分鐘</span>
                 </div>
                 <div class="input-group">
-                    <input type="text" id="input-chakra" placeholder="練習脈輪/方法" oninput="checkForm()">
+                    <select id="input-chakra" onchange="checkForm()">
+                        <option value="" disabled selected>練習脈輪/方法</option>
+                        <option value="腹式呼吸">腹式呼吸</option>
+                        <option value="名色 脈輪">名色 脈輪</option>
+                        <option value="無始 脈輪">無始 脈輪</option>
+                        <option value="無明 脈輪">無明 脈輪</option>
+                        <option value="吉祥 脈輪">吉祥 脈輪</option>
+                        <option value="如意 脈輪">如意 脈輪</option>
+                        <option value="明心 脈輪">明心 脈輪</option>
+                        <option value="二空 脈輪">二空 脈輪</option>
+                        <option value="智慧 脈輪">智慧 脈輪</option>
+                        <option value="法眼 脈輪">法眼 脈輪</option>
+                        <option value="禪心 脈輪">禪心 脈輪</option>
+                    
+                    </select>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="3" style="margin-left:5px;"><path d="M6 9l6 6 6-6"></path></svg>
                 </div>
             </div>
 
@@ -188,7 +202,7 @@
     </div>
 
     <div id="tab-progress" class="tab-content">
-        <div class="loading">成長進度讀取中...</div>
+        <div class="loading">功能載入中...</div>
     </div>
 
     <div id="tab-partner" class="tab-content">
@@ -203,6 +217,11 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbx6L86517PkUKKn3U1WfXTIt3D32VyR94nQ2_l-qC9Jc7W1jZleQ9gf7v_Rotvm-V3C/exec";
     let allRecords = [];
+
+    function formatDateSimple(dateStr) {
+        if (!dateStr) return "";
+        return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    }
 
     window.onload = () => {
         const today = new Date().toISOString().split('T')[0];
@@ -223,7 +242,7 @@
         const name = document.getElementById('input-name').value.trim();
         const date = document.getElementById('input-date').value;
         const duration = document.getElementById('input-duration').value;
-        const chakra = document.getElementById('input-chakra').value.trim();
+        const chakra = document.getElementById('input-chakra').value;
         const reflection = document.getElementById('input-reflection').value.trim();
         const btn = document.getElementById('submit-btn');
 
@@ -256,7 +275,7 @@
             id: Date.now(),
             date: document.getElementById('input-date').value,
             duration: duration,
-            chakra: document.getElementById('input-chakra').value.trim(),
+            chakra: document.getElementById('input-chakra').value,
             type: calculateType(duration),
             reflection: document.getElementById('input-reflection').value.trim()
         };
@@ -294,14 +313,15 @@
         
         allRecords.forEach(rec => {
             const dur = parseInt(rec.duration);
-            let badgeHtml = `<div class="status-badge gray">${rec.date}</div>`;
+            const cleanDate = formatDateSimple(rec.date);
+            let badgeHtml = `<div class="status-badge gray">${cleanDate}</div>`;
             let tagClass = "default";
 
             if (dur >= 60) {
-                badgeHtml = `<div class="status-badge purple">👑 ${rec.date}</div>`;
+                badgeHtml = `<div class="status-badge purple">👑 ${cleanDate}</div>`;
                 tagClass = "purple";
             } else if (dur >= 40) {
-                badgeHtml = `<div class="status-badge orange">⚡ ${rec.date}</div>`;
+                badgeHtml = `<div class="status-badge orange">⚡ ${cleanDate}</div>`;
                 tagClass = "orange";
             }
 
@@ -337,6 +357,7 @@
 
         myData.forEach(rec => {
             const dur = parseInt(rec.duration);
+            const cleanDate = formatDateSimple(rec.date);
             let ribbon = "";
             let tagClass = "default";
 
@@ -357,7 +378,7 @@
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--purple-main)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                             </div>
                             <div class="card-info">
-                                <div class="card-name">${rec.date}</div>
+                                <div class="card-name">${cleanDate}</div>
                                 <div class="tags" style="margin: 6px 0 0 0;">
                                     <div class="tag tag-duration ${tagClass}">${rec.duration} 分鐘</div>
                                     <div class="tag tag-chakra">${rec.chakra}</div>
