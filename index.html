@@ -3,117 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禪定日誌與進度</title>
+    <title>禪定日誌</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
-            --bg-color: #F7F9FA;
-            --white: #FFFFFF;
-            --primary-green: #3E8E7E;
-            --light-green-bg: #F0FDF4;
-            --text-dark: #374151;
-            --text-gray: #8CA3A7;
-            --text-light-gray: #9CA3AF;
-            --purple-main: #8B5CF6;
-            --purple-light: #F3E8FF;
-            --orange-main: #F57C00;
-            --orange-light: #FFF3E0;
-            --gray-pill: #F3F4F6;
+            --bg-color: #F7F9FA; --white: #FFFFFF; --primary-green: #3E8E7E;
+            --light-green-bg: #F0FDF4; --text-dark: #374151; --text-gray: #8CA3A7;
+            --text-light-gray: #9CA3AF; --purple-main: #8B5CF6; --purple-light: #F3E8FF;
+            --orange-main: #F57C00; --orange-light: #FFF3E0; --gray-pill: #F3F4F6;
             --input-bg: #F9FAFB;
         }
-
-        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-        body { background-color: var(--bg-color); margin: 0; padding: 0; display: flex; justify-content: center; color: var(--text-dark); }
-        .app-container { width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; padding-bottom: 40px;}
-
-        /* Header */
+        * { box-sizing: border-box; font-family: -apple-system, sans-serif; }
+        body { background-color: var(--bg-color); margin: 0; display: flex; justify-content: center; color: var(--text-dark); }
+        .app-container { width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .header-left { display: flex; align-items: center; gap: 12px; }
         .heart-icon { width: 48px; height: 48px; background-color: var(--primary-green); border-radius: 16px; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(62,142,126,0.2); }
-        .header-text h1 { margin: 0; font-size: 18px; font-weight: 700; }
-        .header-text p { margin: 2px 0 0; font-size: 13px; color: var(--primary-green); font-weight: 600; }
-        .header-right { text-align: right; }
-        .header-right .points { margin: 0; font-size: 28px; font-weight: 800; color: var(--primary-green); line-height: 1; }
-        
+        .header-text h1 { margin: 0; font-size: 18px; }
+        .logout-link { font-size: 11px; color: var(--text-light-gray); cursor: pointer; text-decoration: underline; margin-left: 8px; font-weight: normal; }
+        .header-right .points { margin: 0; font-size: 28px; font-weight: 800; color: var(--primary-green); }
         .progress-bar-bg { width: 100%; height: 6px; background-color: #E5E7EB; border-radius: 3px; margin-top: 15px; overflow: hidden; }
-        .progress-bar-fill { width: 0%; height: 100%; background-color: var(--primary-green); border-radius: 3px; transition: width 1s ease; }
-
-        /* Tabs */
+        .progress-bar-fill { width: 0%; height: 100%; background-color: var(--primary-green); transition: width 1s ease; }
         .tabs-wrapper { display: flex; background-color: var(--gray-pill); border-radius: 16px; padding: 4px; margin: 20px 0; }
-        .tab { flex: 1; text-align: center; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: bold; color: var(--text-gray); cursor: pointer; transition: all 0.2s; }
+        .tab { flex: 1; text-align: center; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: bold; color: var(--text-gray); cursor: pointer; }
         .tab.active { background-color: var(--white); color: var(--primary-green); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
         .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
-
-        /* Login Section */
+        .tab-content.active { display: block; }
         #login-section { text-align: center; padding: 60px 20px; background: white; border-radius: 24px; margin-top: 40px; }
-
-        /* Calendar Styling */
-        .calendar-container { background: var(--white); border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .calendar-container { background: var(--white); border-radius: 24px; padding: 20px; margin-bottom: 20px; }
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .calendar-btn { border: none; background: var(--gray-pill); padding: 5px 15px; border-radius: 8px; cursor: pointer; color: var(--primary-green); font-weight: bold; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
-        .calendar-day-label { font-size: 11px; color: var(--text-light-gray); font-weight: bold; }
-        .calendar-date { font-size: 13px; padding: 10px 0; border-radius: 12px; color: var(--text-dark); position: relative; font-weight: 600; cursor: pointer; }
+        .calendar-date { font-size: 13px; padding: 10px 0; border-radius: 12px; position: relative; cursor: pointer; }
         .calendar-date.has-record::after { content: ""; width: 5px; height: 5px; border-radius: 50%; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); }
         .calendar-date.rec-purple::after { background: var(--purple-main); }
         .calendar-date.rec-orange::after { background: var(--orange-main); }
         .calendar-date.rec-default::after { background: var(--primary-green); }
         .calendar-date.today { border: 1.5px solid var(--primary-green); }
-
-        /* Form Styling */
-        .form-card { background: var(--white); border-radius: 24px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .form-card { background: var(--white); border-radius: 24px; padding: 24px; margin-bottom: 20px; }
         .input-group { background: var(--input-bg); border-radius: 12px; display: flex; align-items: center; padding: 14px 16px; margin-bottom: 12px; }
-        .input-group input, .input-group select, .input-group textarea { border: none; background: transparent; width: 100%; font-size: 15px; outline: none; font-weight: 600; color: var(--text-dark); }
+        .input-group input, .input-group select, .input-group textarea { border: none; background: transparent; width: 100%; font-size: 15px; outline: none; }
         .btn-submit { width: 100%; background: #F3F4F6; color: #9CA3AF; border: none; padding: 16px; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-submit.active { background: var(--primary-green); color: white; box-shadow: 0 4px 15px rgba(62,142,126,0.3); }
-
-        .streak-container { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding: 5px 0; }
-        .streak-badge { flex-shrink: 0; background: white; padding: 10px 16px; border-radius: 16px; display: none; align-items: center; gap: 8px; border: 1px solid #F3F4F6; font-size: 13px; font-weight: bold; }
-        .streak-badge.active { display: flex; }
-
-        .record-card { background: var(--white); border-radius: 24px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .list-header { font-weight: bold; margin: 20px 0 10px; padding-left: 5px; }
+        .btn-submit.active { background: var(--primary-green); color: white; }
+        .btn-submit.active.orange { background: var(--orange-main); }
+        .btn-submit.active.purple { background: var(--purple-main); }
+        .record-card { background: var(--white); border-radius: 24px; padding: 20px; margin-bottom: 16px; }
         .tag { padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; margin-right: 5px; }
         .tag-duration.purple { background: var(--purple-light); color: var(--purple-main); }
         .tag-duration.orange { background: var(--orange-light); color: var(--orange-main); }
         .tag-duration.default { background: var(--gray-pill); color: var(--text-gray); }
-        .reflection-text { font-size: 15px; color: var(--text-dark); font-style: italic; margin-top: 10px; line-height: 1.5; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Logout Link Style */
-        .logout-link { font-size: 11px; color: var(--text-light-gray); cursor: pointer; text-decoration: underline; margin-left: 5px; font-weight: normal; }
+        .reflection-text { font-size: 15px; margin-top: 10px; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="app-container">
     <div id="login-section">
-        <h2 style="font-size: 20px; margin-bottom: 10px;">✨ 禪定日誌</h2>
-        <p style="color: var(--text-gray); font-size: 14px; margin-bottom: 30px;">登入 Google 帳號，開啟您的智慧旅程</p>
-        <div id="g_id_onload"
-             data-client_id="898764620568-6h1uavirukt1k1vpfpvmfdbge74823vm.apps.googleusercontent.com" 
-             data-callback="handleCredentialResponse"
-             data-auto_prompt="false">
-        </div>
-        <div class="g_id_signin" data-type="standard" data-shape="pill"></div>
+        <h2>✨ 禪定日誌</h2>
+        <p>登入 Google 帳號開啟紀錄</p>
+        <div id="g_id_onload" data-client_id="898764620568-6h1uavirukt1k1vpfpvmfdbge74823vm.apps.googleusercontent.com" data-callback="handleCredentialResponse"></div>
+        <div class="g_id_signin" data-type="standard"></div>
     </div>
 
     <div id="main-content" style="display: none;">
         <div class="header">
             <div class="header-left">
-                <div class="heart-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                </div>
+                <div class="heart-icon">🧘</div>
                 <div class="header-text">
-                    <h1><span id="user-display-name">載入中...</span><span class="logout-link" onclick="logout()">登出</span></h1>
-                    <p>今日禪定狀態</p>
+                    <h1><span id="user-display-name">...</span><span class="logout-link" onclick="logout()">登出</span></h1>
                 </div>
             </div>
-            <div class="header-right">
-                <h2 class="points" id="header-points">0</h2>
-                <p style="font-size: 12px; color: var(--text-gray);">/ 3333 能量累積</p>
-            </div>
+            <div class="header-right"><h2 class="points" id="header-points">0</h2></div>
         </div>
         <div class="progress-bar-bg"><div class="progress-bar-fill" id="header-progress-fill"></div></div>
 
@@ -126,317 +85,160 @@
         <div id="tab-today" class="tab-content active">
             <div class="calendar-container">
                 <div class="calendar-header">
-                    <button class="calendar-btn" onclick="changeMonth(-1)">‹</button>
-                    <div id="calendar-month-label" style="font-weight: bold;"></div>
-                    <button class="calendar-btn" onclick="changeMonth(1)">›</button>
-                </div>
-                <div class="calendar-grid">
-                    <div class="calendar-day-label">日</div><div class="calendar-day-label">一</div><div class="calendar-day-label">二</div><div class="calendar-day-label">三</div><div class="calendar-day-label">四</div><div class="calendar-day-label">五</div><div class="calendar-day-label">六</div>
+                    <button onclick="changeMonth(-1)">‹</button>
+                    <div id="calendar-month-label"></div>
+                    <button onclick="changeMonth(1)">›</button>
                 </div>
                 <div class="calendar-grid" id="calendar-grid"></div>
             </div>
 
-            <div class="streak-container" id="streak-badges">
-                <div class="streak-badge" id="badge-7">🔥 7天</div>
-                <div class="streak-badge" id="badge-21">💎 21天</div>
-                <div class="streak-badge" id="badge-50">✨ 50天</div>
-                <div class="streak-badge" id="badge-100">👑 100天</div>
-            </div>
-
             <div class="form-card">
                 <div class="input-group"><input type="date" id="input-date" oninput="checkForm()"></div>
-                <div class="input-row" style="display: flex; gap: 10px;">
-                    <div class="input-group" style="flex: 1;"><input type="number" id="input-duration" placeholder="分鐘" oninput="checkForm()"></div>
-                    <div class="input-group" style="flex: 1;">
+                <div style="display: flex; gap: 10px;">
+                    <div class="input-group" style="flex:1"><input type="number" id="input-duration" placeholder="分鐘" oninput="checkForm()"></div>
+                    <div class="input-group" style="flex:1">
                         <select id="input-chakra" onchange="checkForm()">
-                            <option value="" disabled selected>脈輪/方法</option>
-                            <option value="腹式呼吸">腹式呼吸</option>
-                            <option value="名色 脈輪">名色 脈輪</option>
-                            <option value="無始 脈輪">無始 脈輪</option>
-                            <option value="無明 脈輪">無明 脈輪</option>
-                            <option value="吉祥 脈輪">吉祥 脈輪</option>
-                            <option value="如意 脈輪">如意 脈輪</option>
-                            <option value="明心 脈輪">明心 脈輪</option>
-                            <option value="二空 脈輪">二空 脈輪</option>
-                            <option value="智慧 脈輪">智慧 脈輪</option>
-                            <option value="法眼 脈輪">法眼 脈輪</option>
+                            <option value="" disabled selected>選擇脈輪</option>
+                            <option value="腹式呼吸">腹式呼吸</option><option value="名色 脈輪">名色 脈輪</option>
+                            <option value="無始 脈輪">無始 脈輪</option><option value="無明 脈輪">無明 脈輪</option>
+                            <option value="吉祥 脈輪">吉祥 脈輪</option><option value="如意 脈輪">如意 脈輪</option>
+                            <option value="明心 脈輪">明心 脈輪</option><option value="二空 脈輪">二空 脈輪</option>
+                            <option value="智慧 脈輪">智慧 脈輪</option><option value="法眼 脈輪">法眼 脈輪</option>
                             <option value="禪心 脈輪">禪心 脈輪</option>
                         </select>
                     </div>
                 </div>
-                <textarea id="input-reflection" class="input-group" placeholder="寫下您的心得發現..." oninput="checkForm()" style="height: 100px; padding: 15px; border-radius: 12px;"></textarea>
+                <textarea id="input-reflection" class="input-group" placeholder="心得發現..." oninput="checkForm()" style="height:80px"></textarea>
                 <button id="submit-btn" class="btn-submit" onclick="saveRecord()" disabled>送出禪定紀錄</button>
             </div>
-
-            <div class="list-header">您的歷史紀錄</div>
             <div id="my-records-container"></div>
         </div>
 
         <div id="tab-progress" class="tab-content">
-            <div class="form-card" style="text-align: center;">
-                <div style="font-size: 14px; color: var(--text-gray);">個人累積能量</div>
-                <div id="total-energy" style="font-size: 48px; font-weight: 800; color: var(--primary-green);">0</div>
-                <div id="level-text" style="font-weight: bold; margin: 10px 0; color: var(--primary-green);">Level 0</div>
-                <div style="display: flex; justify-content: space-around; margin-top: 20px;">
-                    <div><div id="total-sessions" style="font-size: 20px; font-weight: bold;">0</div><div style="font-size: 12px;">次數</div></div>
-                    <div><div id="current-streak" style="font-size: 20px; font-weight: bold; color: #EF4444;">0</div><div style="font-size: 12px;">連續</div></div>
-                </div>
+            <div class="form-card" style="text-align:center">
+                <div id="total-energy" style="font-size:48px; color:var(--primary-green)">0</div>
+                <div id="level-text">Level 0</div>
             </div>
         </div>
 
         <div id="tab-partner" class="tab-content">
-            <div class="list-header">大家的心得</div>
             <div id="partner-records-container"></div>
         </div>
     </div>
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbymJ3EnKrMk39UV8Kf9PmOqB5kQlqj9t6rrrr1H8YbZA8HRNu0CKpk9Yqx_LDdvYaDG/exec";
-    let allRecords = [];
-    let currentUser = null;
-    let viewDate = new Date();
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwAnM06m44l3PrEg6qnHU7SH1UBhrdKixtJ-0Cb8r45z9MvDh4gRKk4qQzqL1E0LgY/exec"; 
+    let allRecords = [], currentUser = null, viewDate = new Date();
 
-    // 1. Google 登入處理 (整合強壯解析與 localStorage)
     function handleCredentialResponse(response) {
-        try {
-            const base64Url = response.credential.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-
-            const payload = JSON.parse(jsonPayload);
-            
-            currentUser = {
-                email: payload.email,
-                name: payload.name,
-                picture: payload.picture
-            };
-            
-            // 存入本地存儲，防止重新整理登出
-            localStorage.setItem('zenUser', JSON.stringify(currentUser));
-            
-            showMainUI();
-            fetchData(); 
-        } catch (e) {
-            console.error("解析登入資料失敗", e);
-            alert("登入解析失敗，請確認是否使用正確的 Google 帳號。");
-        }
+        const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        currentUser = { email: payload.email, name: payload.name };
+        localStorage.setItem('zenUser', JSON.stringify(currentUser));
+        init();
     }
 
-    // 顯示主介面邏輯
-    function showMainUI() {
+    function init() {
         if (!currentUser) return;
         document.getElementById('login-section').style.display = 'none';
         document.getElementById('main-content').style.display = 'block';
         document.getElementById('user-display-name').innerText = currentUser.name;
         document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+        fetchData();
     }
 
-    // 登出功能
-    function logout() {
-        if(confirm("確定要登出嗎？")) {
-            localStorage.removeItem('zenUser');
-            location.reload();
-        }
-    }
-
-    // 網頁啟動時自動檢查登入狀態
-    window.onload = function() {
-        const savedUser = localStorage.getItem('zenUser');
-        if (savedUser) {
-            currentUser = JSON.parse(savedUser);
-            showMainUI();
-            fetchData();
-        }
-    };
-
-    // 2. 切換頁籤
-    function switchTab(tabId) {
-        document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
-        document.getElementById('btn-' + tabId).classList.add('active');
-        document.getElementById('tab-' + tabId).classList.add('active');
-        if(tabId === 'today') renderCalendar();
-    }
-
-    // 3. 抓取資料
     async function fetchData() {
-        if (!currentUser) return;
-        try {
-            const response = await fetch(GAS_URL);
-            const rawData = await response.json();
-            allRecords = rawData.map(r => ({
-                ...r,
-                date: r.date ? r.date.split('T')[0] : "" 
-            }));
-            allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
-            renderAll();
-        } catch(e) { 
-            console.error("抓取失敗", e);
-        }
+        const res = await fetch(GAS_URL);
+        allRecords = await res.json();
+        allRecords.sort((a,b) => new Date(b.date) - new Date(a.date));
+        renderAll();
     }
 
     function renderAll() {
-        renderPartnerRecords();
-        renderMyRecords();
-        renderCalendar();
-        renderProgress();
+        renderMyRecords(); renderPartnerRecords(); renderCalendar(); renderProgress();
     }
 
-    // 4. 月曆邏輯
-    function changeMonth(step) {
-        viewDate.setMonth(viewDate.getMonth() + step);
-        renderCalendar();
+    function renderMyRecords() {
+        const container = document.getElementById('my-records-container');
+        const mine = allRecords.filter(r => r.email === currentUser.email);
+        container.innerHTML = mine.map(r => `<div class="record-card"><b>${r.date}</b><br><span class="tag tag-duration ${parseInt(r.duration)>=60?'purple':parseInt(r.duration)>=40?'orange':'default'}">${r.duration} min</span><div class="reflection-text">${r.reflection}</div></div>`).join('');
+    }
+
+    function renderPartnerRecords() {
+        const container = document.getElementById('partner-records-container');
+        container.innerHTML = allRecords.slice(0, 20).map(r => `<div class="record-card"><b>${r.name}</b> (${r.date})<br><div class="reflection-text">${r.reflection}</div></div>`).join('');
     }
 
     function renderCalendar() {
-        if (!currentUser) return;
         const grid = document.getElementById('calendar-grid');
-        const monthLabel = document.getElementById('calendar-month-label');
         const year = viewDate.getFullYear(), month = viewDate.getMonth();
-        monthLabel.innerText = `${year}年 ${month + 1}月`;
-        
+        document.getElementById('calendar-month-label').innerText = `${year}年 ${month + 1}月`;
+        grid.innerHTML = "<div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>";
         const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
-        const myData = allRecords.filter(r => r.email === currentUser.email);
-        const recordMap = {};
-        myData.forEach(r => {
-            const d = r.date;
-            const dur = parseInt(r.duration);
-            let type = 'rec-default';
-            if (dur >= 60) type = 'rec-purple';
-            else if (dur >= 40) type = 'rec-orange';
-            recordMap[d] = type;
-        });
-
-        grid.innerHTML = "";
-        for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
+        const daysInMonth = new Date(year, month+1, 0).getDate();
+        const mine = allRecords.filter(r => r.email === currentUser.email);
+        for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
         for(let d=1; d<=daysInMonth; d++) {
-            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const isToday = new Date().toISOString().split('T')[0] === dateStr;
-            const recClass = recordMap[dateStr] || '';
-            grid.innerHTML += `<div class="calendar-date ${isToday?'today':''} ${recClass?'has-record '+recClass:''}" onclick="showDateRecord('${dateStr}')">${d}</div>`;
+            const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const rec = mine.find(r => r.date === dStr);
+            let cls = rec ? (parseInt(rec.duration)>=60?'rec-purple':parseInt(rec.duration)>=40?'rec-orange':'rec-default') : '';
+            grid.innerHTML += `<div class="calendar-date ${cls?'has-record '+cls:''}" onclick="showDateRecord('${dStr}')">${d}</div>`;
         }
     }
 
     function showDateRecord(date) {
         const rec = allRecords.find(r => r.email === currentUser.email && r.date === date);
-        if(rec) alert(`【${date}】\n方法：${rec.chakra}\n時長：${rec.duration} 分鐘\n心得：${rec.reflection}`);
+        alert(rec ? `【${date}】\n方法：${rec.chakra}\n時間：${rec.duration}分\n心得：${rec.reflection}` : `【${date}】\n無紀錄`);
     }
 
-    // 5. 表單處理
     function checkForm() {
-        const d = document.getElementById('input-date').value;
-        const dur = document.getElementById('input-duration').value;
-        const c = document.getElementById('input-chakra').value;
-        const r = document.getElementById('input-reflection').value.trim();
+        const dur = parseInt(document.getElementById('input-duration').value) || 0;
+        const isReady = document.getElementById('input-date').value && dur > 0 && document.getElementById('input-chakra').value && document.getElementById('input-reflection').value.trim();
         const btn = document.getElementById('submit-btn');
-        btn.disabled = !(d && dur && c && r);
-        btn.classList.toggle('active', !btn.disabled);
+        btn.disabled = !isReady;
+        btn.className = 'btn-submit' + (isReady ? ' active' : '') + (dur>=60?' purple': dur>=40?' orange':'');
     }
 
     async function saveRecord() {
         const btn = document.getElementById('submit-btn');
-        btn.innerText = "🚀 送出中..."; btn.disabled = true;
-
-        const newRecord = {
-            email: currentUser.email,
-            name: currentUser.name,
+        btn.innerText = "傳送中..."; btn.disabled = true;
+        const data = {
+            email: currentUser.email, name: currentUser.name,
             date: document.getElementById('input-date').value,
             duration: document.getElementById('input-duration').value,
             chakra: document.getElementById('input-chakra').value,
             reflection: document.getElementById('input-reflection').value.trim()
         };
-
-        try {
-            await fetch(GAS_URL, { method: "POST", body: JSON.stringify(newRecord) });
-            ["input-duration", "input-chakra", "input-reflection"].forEach(id => document.getElementById(id).value = "");
-            await fetchData();
-            alert("紀錄成功！");
-        } catch(e) { alert("連線失敗，請檢查網路"); }
+        await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
+        allRecords.unshift(data); 
+        renderAll();
+        alert("儲存成功！");
         btn.innerText = "送出禪定紀錄";
+        ["input-duration", "input-reflection"].forEach(id => document.getElementById(id).value = "");
         checkForm();
     }
 
-    // 6. 成長進度計算
     function renderProgress() {
-        const myData = allRecords.filter(r => r.email === currentUser.email);
+        const mine = allRecords.filter(r => r.email === currentUser.email);
         let energy = 0;
-        const dates = [...new Set(myData.map(r => r.date))].sort();
-        
-        myData.forEach(r => {
-            const d = parseInt(r.duration) || 0;
-            energy += (d >= 60) ? d * 2 : (d >= 40) ? d * 1.5 : d;
+        mine.forEach(r => {
+            let d = parseInt(r.duration);
+            energy += (d>=60?d*2:d>=40?d*1.5:d);
         });
-
-        const streak = calculateStreak(dates);
-        
         document.getElementById('total-energy').innerText = Math.floor(energy);
         document.getElementById('header-points').innerText = Math.floor(energy);
-        document.getElementById('total-sessions').innerText = myData.length;
-        document.getElementById('current-streak').innerText = streak;
-        document.getElementById('header-progress-fill').style.width = Math.min((energy/3333)*100, 100) + "%";
-
-        let lv = "Level 0: 初試啼聲";
-        if(myData.length >= 100) lv = "Level 4: 入定大師";
-        else if(myData.length >= 70) lv = "Level 3: 高度投入";
-        else if(myData.length >= 50) lv = "Level 2: 穩定進步";
-        else if(myData.length >= 30) lv = "Level 1: 建立習慣";
-        document.getElementById('level-text').innerText = lv;
-
-        document.getElementById('badge-7').classList.toggle('active', streak >= 7);
-        document.getElementById('badge-21').classList.toggle('active', streak >= 21);
-        document.getElementById('badge-50').classList.toggle('active', streak >= 50);
-        document.getElementById('badge-100').classList.toggle('active', streak >= 100);
+        document.getElementById('header-progress-fill').style.width = Math.min((energy/3333)*100, 100) + '%';
     }
 
-    function calculateStreak(dates) {
-        if(!dates.length) return 0;
-        let streak = 0;
-        let check = new Date();
-        check.setHours(0,0,0,0);
-        const set = new Set(dates);
-        if(!set.has(check.toISOString().split('T')[0])) check.setDate(check.getDate() - 1);
-        while(set.has(check.toISOString().split('T')[0])) {
-            streak++;
-            check.setDate(check.getDate() - 1);
-        }
-        return streak;
+    function switchTab(id) {
+        document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById('btn-'+id).classList.add('active');
+        document.getElementById('tab-'+id).classList.add('active');
     }
 
-    function renderPartnerRecords() {
-        const container = document.getElementById('partner-records-container');
-        container.innerHTML = allRecords.slice(0, 30).map(rec => {
-            const dur = parseInt(rec.duration);
-            const color = dur >= 60 ? 'purple' : dur >= 40 ? 'orange' : 'default';
-            return `<div class="record-card">
-                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;">
-                    <span>${rec.name}</span> <span style="color:var(--text-gray)">${rec.date}</span>
-                </div>
-                <div style="margin:10px 0;">
-                    <span class="tag tag-duration ${color}">${rec.duration} min</span>
-                    <span class="tag tag-chakra" style="background:var(--light-green-bg); color:var(--primary-green);">${rec.chakra}</span>
-                </div>
-                <div class="reflection-text">"${rec.reflection}"</div>
-            </div>`;
-        }).join('');
-    }
-
-    function renderMyRecords() {
-        const container = document.getElementById('my-records-container');
-        const myData = allRecords.filter(r => r.email === currentUser.email);
-        container.innerHTML = myData.map(rec => {
-            const dur = parseInt(rec.duration);
-            const color = dur >= 60 ? 'purple' : dur >= 40 ? 'orange' : 'default';
-            return `<div class="record-card">
-                <div style="font-weight:bold; margin-bottom:10px;">${rec.date}</div>
-                <div><span class="tag tag-duration ${color}">${rec.duration} 分鐘</span><span class="tag tag-chakra" style="background:var(--light-green-bg); color:var(--primary-green);">${rec.chakra}</span></div>
-                <div class="reflection-text">"${rec.reflection}"</div>
-            </div>`;
-        }).join('');
-    }
+    function changeMonth(s) { viewDate.setMonth(viewDate.getMonth()+s); renderCalendar(); }
+    function logout() { localStorage.removeItem('zenUser'); location.reload(); }
+    window.onload = () => { currentUser = JSON.parse(localStorage.getItem('zenUser')); if(currentUser) init(); };
 </script>
 </body>
 </html>
