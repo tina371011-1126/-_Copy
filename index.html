@@ -28,6 +28,23 @@
         .progress-bar-bg { width: 100%; height: 6px; background-color: #E5E7EB; border-radius: 3px; margin-top: 15px; overflow: hidden; }
         .progress-bar-fill { width: 0%; height: 100%; background-color: var(--primary-green); transition: width 1s ease; }
 
+        /* 金句區塊樣式 */
+        .quote-container {
+            background-color: var(--white);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 10px 0 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+            border: 1px solid rgba(62, 142, 126, 0.1);
+        }
+        .quote-content {
+            color: #4B5563; font-size: 14px; line-height: 1.8; margin-bottom: 12px; font-weight: 500;
+        }
+        .quote-author {
+            color: var(--primary-green); font-size: 12px; text-align: right; font-weight: bold;
+        }
+        .quote-author span { color: #374151; margin-right: 4px; }
+
         /* Tabs */
         .tabs-wrapper { display: flex; background-color: var(--gray-pill); border-radius: 16px; padding: 4px; margin: 20px 0; }
         .tab { flex: 1; text-align: center; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: bold; color: var(--text-gray); cursor: pointer; }
@@ -57,7 +74,6 @@
         .btn-submit.active.orange { background: var(--orange-main); }
         .btn-submit.active.purple { background: var(--purple-main); }
 
-        /* Records Card */
         .record-card { background: var(--white); border-radius: 24px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
         .tag { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-right: 5px; display: inline-flex; align-items: center; }
         .tag-duration.purple { background: var(--purple-light); color: var(--purple-main); }
@@ -65,7 +81,6 @@
         .tag-duration.default { background: var(--gray-pill); color: var(--text-gray); }
         .reflection-text { font-size: 15px; margin-top: 10px; line-height: 1.6; }
 
-        /* Search & Pagination */
         .search-area { display: flex; gap: 8px; margin-bottom: 15px; }
         .search-input { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #E5E7EB; font-size: 13px; }
         .pagination { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 20px; }
@@ -100,18 +115,14 @@
         <div class="progress-bar-bg"><div class="progress-bar-fill" id="header-progress-fill"></div></div>
 
         <div class="quote-container">
-    <div class="quote-content">
-        「禪令忙碌的人找到寧靜，禪令痛苦的人解脫煩惱，禪令快樂的人獲得智慧，禪令不平凡的人，明瞭平凡的真諦。」
-    </div>
-    <div class="quote-author">
-        —— <span>禪宗第 85 代宗師</span> 悟覺妙天禪師
-    </div>
-</div>
+            <div class="quote-content">
+                「禪令忙碌的人找到寧靜，禪令痛苦的人解脫煩惱，禪令快樂的人獲得智慧，禪令不平凡的人，明瞭平凡的真諦。」
+            </div>
+            <div class="quote-author">
+                —— <span>禪宗第 85 代宗師</span> 悟覺妙天禪師
+            </div>
+        </div>
 
-<div class="tabs-wrapper">
-    <div class="tab active" onclick="switchTab('today')" id="btn-today">今日紀錄</div>
-    ...
-</div>
         <div class="tabs-wrapper">
             <div class="tab active" onclick="switchTab('today')" id="btn-today">今日紀錄</div>
             <div class="tab" onclick="switchTab('progress')" id="btn-progress">成長進度</div>
@@ -171,20 +182,15 @@
         <div id="tab-partner" class="tab-content">
             <div class="search-area">
                 <input type="text" id="search-name" class="search-input" placeholder="搜尋人名..." oninput="resetPage()">
-               <select id="search-chakra" class="search-input" onchange="resetPage()">
-    <option value="">所有脈輪</option>
-    <option value="腹式呼吸">腹式呼吸</option>
-    <option value="名色 脈輪">名色 脈輪</option>
-    <option value="無始 脈輪">無始 脈輪</option>
-    <option value="無明 脈輪">無明 脈輪</option>
-    <option value="吉祥 脈輪">吉祥 脈輪</option>
-    <option value="如意 脈輪">如意 脈輪</option>
-    <option value="明心 脈輪">明心 脈輪</option>
-    <option value="二空 脈輪">二空 脈輪</option>
-    <option value="智慧 脈輪">智慧 脈輪</option>
-    <option value="法眼 脈輪">法眼 脈輪</option>
-    <option value="禪心 脈輪">禪心 脈輪</option>
-</select>
+                <select id="search-chakra" class="search-input" onchange="resetPage()">
+                    <option value="">所有脈輪</option>
+                    <option value="腹式呼吸">腹式呼吸</option><option value="名色 脈輪">名色 脈輪</option>
+                    <option value="無始 脈輪">無始 脈輪</option><option value="無明 脈輪">無明 脈輪</option>
+                    <option value="吉祥 脈輪">吉祥 脈輪</option><option value="如意 脈輪">如意 脈輪</option>
+                    <option value="明心 脈輪">明心 脈輪</option><option value="二空 脈輪">二空 脈輪</option>
+                    <option value="智慧 脈輪">智慧 脈輪</option><option value="法眼 脈輪">法眼 脈輪</option>
+                    <option value="禪心 脈輪">禪心 脈輪</option>
+                </select>
             </div>
             <div id="partner-records-container"></div>
             <div class="pagination">
@@ -197,38 +203,11 @@
 </div>
 
 <script>
-    /* 金句區塊樣式 */
-.quote-container {
-    background-color: var(--white);
-    border-radius: 20px;
-    padding: 20px;
-    margin: 10px 0 20px 0;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
-    border: 1px solid rgba(62, 142, 126, 0.1); /* 淡淡的綠色邊框 */
-}
-.quote-content {
-    color: #4B5563;
-    font-size: 15px;
-    line-height: 1.8;
-    margin-bottom: 12px;
-    font-weight: 500;
-}
-.quote-author {
-    color: var(--primary-green);
-    font-size: 13px;
-    text-align: right;
-    font-weight: bold;
-}
-.quote-author span {
-    color: #374151;
-    margin-right: 4px;
-}
     const GAS_URL = "https://script.google.com/macros/s/AKfycbw4Ij_zKkM6NCqybjRRN-DWwiv662WSATrGhe9BVp5S__cNFRx4eVX8m6h5XcG3zecB/exec"; 
     let allRecords = [], currentUser = null, viewDate = new Date();
     let currentPage = 1;
     const itemsPerPage = 10;
 
-    // 解決中文亂碼的解析函式
     function handleCredentialResponse(response) {
         const base64Url = response.credential.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -243,35 +222,34 @@
     }
 
     function init() {
-    if (!currentUser) return;
-    document.getElementById('login-section').style.display = 'none';
-    document.getElementById('main-content').style.display = 'block';
-    document.getElementById('user-display-name').innerText = currentUser.name;
+        if (!currentUser) return;
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        document.getElementById('user-display-name').innerText = currentUser.name;
 
-    // 修正：帶入當地當下日期
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    document.getElementById('input-date').value = `${year}-${month}-${day}`;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        document.getElementById('input-date').value = `${year}-${month}-${day}`;
 
-    fetchData();
-}
+        fetchData();
+    }
 
     async function fetchData() {
-        const res = await fetch(GAS_URL);
-        const data = await res.json();
-        // 確保日期字串乾淨
-        allRecords = data.map(r => ({...r, date: String(r.date).split('T')[0]}));
-        allRecords.sort((a,b) => new Date(b.date) - new Date(a.date));
-        renderAll();
+        try {
+            const res = await fetch(GAS_URL);
+            const data = await res.json();
+            allRecords = data.map(r => ({...r, date: String(r.date).split('T')[0]}));
+            allRecords.sort((a,b) => new Date(b.date) - new Date(a.date));
+            renderAll();
+        } catch (e) { console.error("Fetch error", e); }
     }
 
     function renderAll() {
         renderMyRecords(); renderPartnerRecords(); renderCalendar(); renderProgress();
     }
 
-    // 格式化顯示圖標
     function getDurTag(dur) {
         const d = parseInt(dur);
         if(d >= 60) return `<span class="tag tag-duration purple">👑 ${d} min</span>`;
@@ -280,24 +258,23 @@
     }
 
     function renderMyRecords() {
-    const container = document.getElementById('my-records-container');
-    const mine = allRecords.filter(r => r.email === currentUser.email);
-    container.innerHTML = mine.map(r => `
-        <div class="record-card" style="position:relative;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <b style="font-size:14px;">${r.date}</b>
-                <div>
-                    ${getDurTag(r.duration)}
-                    <span style="cursor:pointer; margin-left:10px; color:#EF4444; font-size:12px;" 
-                          onclick="deleteRecord('${r.date}', '${r.duration}')">🗑️ 刪除</span>
+        const container = document.getElementById('my-records-container');
+        const mine = allRecords.filter(r => r.email === currentUser.email);
+        container.innerHTML = mine.map(r => `
+            <div class="record-card" style="position:relative;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <b style="font-size:14px;">${r.date}</b>
+                    <div>
+                        ${getDurTag(r.duration)}
+                        <span style="cursor:pointer; margin-left:10px; color:#EF4444; font-size:12px;" 
+                              onclick="deleteRecord('${r.date}', '${r.duration}')">🗑️ 刪除</span>
+                    </div>
                 </div>
+                <div class="reflection-text">${r.reflection}</div>
             </div>
-            <div class="reflection-text">${r.reflection}</div>
-        </div>
-    `).join('');
-}
+        `).join('');
+    }
 
-    // 夥伴心得篩選與分頁
     function renderPartnerRecords() {
         const nameKey = document.getElementById('search-name').value.toLowerCase();
         const chakraKey = document.getElementById('search-chakra').value;
@@ -401,7 +378,7 @@
         document.getElementById('current-streak').innerText = streak;
         document.getElementById('header-progress-fill').style.width = Math.min((energy/3333)*100, 100) + '%';
         
-        let lv = "Level 0：初入禪徑";
+        let lv = "Level 0：初步練習";
         if(mine.length >= 100) lv = "Level 4：進階挑戰";
         else if(mine.length >= 70) lv = "Level 3：高度投入";
         else if(mine.length >= 50) lv = "Level 2：穩定練習";
@@ -415,41 +392,19 @@
     }
 
     function calculateStreak(dates) {
-    if (!dates.length) return 0;
-
-    // 1. 取得「今天」的日期字串 (排除時間)
-    const now = new Date();
-    const todayStr = now.getFullYear() + '-' + 
-                     String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-                     String(now.getDate()).padStart(2, '0');
-
-    // 2. 將所有日期轉化為統一格式的 Set，方便快速搜尋
-    const dateSet = new Set(dates.map(d => String(d).split('T')[0].trim()));
-
-    let streak = 0;
-    let checkDate = new Date(todayStr); // 從今天開始往回找
-
-    // 3. 檢查「今天」有沒有紀錄。
-    // 如果今天還沒練，就從「昨天」開始算連續天數（這符合一般習慣，避免今天一早看變 0）
-    if (!dateSet.has(todayStr)) {
-        checkDate.setDate(checkDate.getDate() - 1);
-    }
-
-    // 4. 開始往回扣天數，只要 Set 裡面有日期，Streak 就加 1
-    while (true) {
-        let checkStr = checkDate.getFullYear() + '-' + 
-                       String(checkDate.getMonth() + 1).padStart(2, '0') + '-' + 
-                       String(checkDate.getDate()).padStart(2, '0');
-        
-        if (dateSet.has(checkStr)) {
-            streak++;
-            checkDate.setDate(checkDate.getDate() - 1);
-        } else {
-            break; // 中斷了就停止
+        if (!dates.length) return 0;
+        const now = new Date();
+        const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        const dateSet = new Set(dates.map(d => String(d).split('T')[0].trim()));
+        let streak = 0, checkDate = new Date(todayStr);
+        if (!dateSet.has(todayStr)) checkDate.setDate(checkDate.getDate() - 1);
+        while (true) {
+            let checkStr = checkDate.getFullYear() + '-' + String(checkDate.getMonth() + 1).padStart(2, '0') + '-' + String(checkDate.getDate()).padStart(2, '0');
+            if (dateSet.has(checkStr)) { streak++; checkDate.setDate(checkDate.getDate() - 1); } 
+            else break;
         }
+        return streak;
     }
-    return streak;
-}
 
     function switchTab(id) {
         document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
@@ -459,25 +414,21 @@
 
     function changeMonth(s) { viewDate.setMonth(viewDate.getMonth()+s); renderCalendar(); }
     function logout() { localStorage.removeItem('zenUser'); location.reload(); }
-    window.onload = () => { currentUser = JSON.parse(localStorage.getItem('zenUser')); if(currentUser) init(); };
-    async function deleteRecord(date, duration) {
-    if (!confirm("確定要刪除這條紀錄嗎？")) return;
     
-    const data = {
-        action: 'delete',
-        email: currentUser.email,
-        date: date,
-        duration: duration
-    };
-
-    try {
-        await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
-        alert("刪除成功！");
-        fetchData(); // 重新整理資料
-    } catch (e) {
-        alert("刪除失敗，請稍後再試");
+    async function deleteRecord(date, duration) {
+        if (!confirm("確定要刪除這條紀錄嗎？")) return;
+        const data = { action: 'delete', email: currentUser.email, date: date, duration: duration };
+        try {
+            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
+            alert("刪除成功！");
+            fetchData();
+        } catch (e) { alert("刪除失敗"); }
     }
-}
+
+    window.onload = () => { 
+        currentUser = JSON.parse(localStorage.getItem('zenUser')); 
+        if(currentUser) init(); 
+    };
 </script>
 </body>
 </html>
