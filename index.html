@@ -196,28 +196,36 @@
 
     // 1. Google 登入處理
     function handleCredentialResponse(response) {
-        try {
-            const payload = JSON.parse(atob(response.credential.split('.')[1]));
-            currentUser = {
-                email: payload.email,
-                name: payload.name,
-                picture: payload.picture
-            };
-            
-            // 介面切換
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('main-content').style.display = 'block';
-            document.getElementById('user-display-name').innerText = currentUser.name;
-            
-            // 初始化預設日期
-            document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
-            
-            fetchData(); 
-        } catch (e) {
-            console.error("解析登入資料失敗", e);
-            alert("登入失敗，請重試");
-        }
+    try {
+        // 使用更安全的方式解析 Google 的 ID Token (支援中文與特殊字元)
+        const base64Url = response.credential.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+
+        const payload = JSON.parse(jsonPayload);
+        
+        currentUser = {
+            email: payload.email,
+            name: payload.name,
+            picture: payload.picture
+        };
+        
+        // 介面切換
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        document.getElementById('user-display-name').innerText = currentUser.name;
+        
+        // 初始化預設日期
+        document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+        
+        fetchData(); 
+    } catch (e) {
+        console.error("解析登入資料失敗", e);
+        alert("登入解析失敗，請確認是否使用正確的 Google 帳號或更換瀏覽器重試。");
     }
+}
 
     // 2. 切換頁籤
     function switchTab(tabId) {
