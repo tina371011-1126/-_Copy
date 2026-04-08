@@ -204,17 +204,22 @@
 
     // Google Login Callback
     function handleCredentialResponse(response) {
-        const payload = JSON.parse(atob(response.credential.split('.')[1]));
-        currentUser = {
-            email: payload.email,
-            name: payload.name,
-            picture: payload.picture
-        };
-        document.getElementById('login-section').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
-        document.getElementById('user-display-name').innerText = currentUser.name;
-        fetchData();
-    }
+    // 這一行是關鍵，它會解析 Google 傳回來的加密資料
+    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    
+    currentUser = {
+        email: payload.email,
+        name: payload.name,
+        picture: payload.picture
+    };
+
+    // 登入成功後切換顯示畫面
+    document.getElementById('login-section').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+    document.getElementById('user-display-name').innerText = currentUser.name;
+    
+    fetchData(); // 去抓雲端資料
+}
 
     function switchTab(tabId) {
         document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
