@@ -99,6 +99,19 @@
         </div>
         <div class="progress-bar-bg"><div class="progress-bar-fill" id="header-progress-fill"></div></div>
 
+        <div class="quote-container">
+    <div class="quote-content">
+        「禪令忙碌的人找到寧靜，禪令痛苦的人解脫煩惱，禪令快樂的人獲得智慧，禪令不平凡的人，明瞭平凡的真諦。」
+    </div>
+    <div class="quote-author">
+        —— <span>禪宗第 85 代宗師</span> 悟覺妙天禪師
+    </div>
+</div>
+
+<div class="tabs-wrapper">
+    <div class="tab active" onclick="switchTab('today')" id="btn-today">今日紀錄</div>
+    ...
+</div>
         <div class="tabs-wrapper">
             <div class="tab active" onclick="switchTab('today')" id="btn-today">今日紀錄</div>
             <div class="tab" onclick="switchTab('progress')" id="btn-progress">成長進度</div>
@@ -184,7 +197,33 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbykWXMBlvpQW2F6b-QG_Ndpz8IJbcDbiUSxIxNmqycBtU7PaUGblNjw0B0ZMYnuRI3P/exec"; 
+    /* 金句區塊樣式 */
+.quote-container {
+    background-color: var(--white);
+    border-radius: 20px;
+    padding: 20px;
+    margin: 10px 0 20px 0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+    border: 1px solid rgba(62, 142, 126, 0.1); /* 淡淡的綠色邊框 */
+}
+.quote-content {
+    color: #4B5563;
+    font-size: 15px;
+    line-height: 1.8;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+.quote-author {
+    color: var(--primary-green);
+    font-size: 13px;
+    text-align: right;
+    font-weight: bold;
+}
+.quote-author span {
+    color: #374151;
+    margin-right: 4px;
+}
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbw4Ij_zKkM6NCqybjRRN-DWwiv662WSATrGhe9BVp5S__cNFRx4eVX8m6h5XcG3zecB/exec"; 
     let allRecords = [], currentUser = null, viewDate = new Date();
     let currentPage = 1;
     const itemsPerPage = 10;
@@ -204,13 +243,20 @@
     }
 
     function init() {
-        if (!currentUser) return;
-        document.getElementById('login-section').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
-        document.getElementById('user-display-name').innerText = currentUser.name;
-        document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
-        fetchData();
-    }
+    if (!currentUser) return;
+    document.getElementById('login-section').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+    document.getElementById('user-display-name').innerText = currentUser.name;
+
+    // 修正：帶入當地當下日期
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    document.getElementById('input-date').value = `${year}-${month}-${day}`;
+
+    fetchData();
+}
 
     async function fetchData() {
         const res = await fetch(GAS_URL);
@@ -234,18 +280,22 @@
     }
 
     function renderMyRecords() {
-        const container = document.getElementById('my-records-container');
-        const mine = allRecords.filter(r => r.email === currentUser.email);
-        container.innerHTML = mine.slice(0, 5).map(r => `
-            <div class="record-card">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <b style="font-size:14px;">${r.date}</b>
+    const container = document.getElementById('my-records-container');
+    const mine = allRecords.filter(r => r.email === currentUser.email);
+    container.innerHTML = mine.map(r => `
+        <div class="record-card" style="position:relative;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <b style="font-size:14px;">${r.date}</b>
+                <div>
                     ${getDurTag(r.duration)}
+                    <span style="cursor:pointer; margin-left:10px; color:#EF4444; font-size:12px;" 
+                          onclick="deleteRecord('${r.date}', '${r.duration}')">🗑️ 刪除</span>
                 </div>
-                <div class="reflection-text">${r.reflection}</div>
             </div>
-        `).join('');
-    }
+            <div class="reflection-text">${r.reflection}</div>
+        </div>
+    `).join('');
+}
 
     // 夥伴心得篩選與分頁
     function renderPartnerRecords() {
@@ -410,6 +460,24 @@
     function changeMonth(s) { viewDate.setMonth(viewDate.getMonth()+s); renderCalendar(); }
     function logout() { localStorage.removeItem('zenUser'); location.reload(); }
     window.onload = () => { currentUser = JSON.parse(localStorage.getItem('zenUser')); if(currentUser) init(); };
+    async function deleteRecord(date, duration) {
+    if (!confirm("確定要刪除這條紀錄嗎？")) return;
+    
+    const data = {
+        action: 'delete',
+        email: currentUser.email,
+        date: date,
+        duration: duration
+    };
+
+    try {
+        await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
+        alert("刪除成功！");
+        fetchData(); // 重新整理資料
+    } catch (e) {
+        alert("刪除失敗，請稍後再試");
+    }
+}
 </script>
 </body>
 </html>
