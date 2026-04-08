@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>禪定日誌與進度</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
             --bg-color: #F7F9FA;
@@ -22,277 +23,245 @@
         }
 
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-
-        body {
-            background-color: var(--bg-color);
-            margin: 0; padding: 0;
-            display: flex; justify-content: center;
-            color: var(--text-dark);
-        }
-
+        body { background-color: var(--bg-color); margin: 0; padding: 0; display: flex; justify-content: center; color: var(--text-dark); }
         .app-container { width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; padding-bottom: 40px;}
 
         /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .header-left { display: flex; align-items: center; gap: 12px; }
-        .heart-icon {
-            width: 48px; height: 48px; background-color: var(--primary-green); border-radius: 16px;
-            display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(62,142,126,0.2);
-        }
+        .heart-icon { width: 48px; height: 48px; background-color: var(--primary-green); border-radius: 16px; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(62,142,126,0.2); }
         .header-text h1 { margin: 0; font-size: 18px; font-weight: 700; }
         .header-text p { margin: 2px 0 0; font-size: 13px; color: var(--primary-green); font-weight: 600; }
         .header-right { text-align: right; }
         .header-right .points { margin: 0; font-size: 28px; font-weight: 800; color: var(--primary-green); line-height: 1; }
-        .header-right .subtitle { margin: 4px 0 0; font-size: 12px; color: var(--text-gray); font-weight: 600; }
         
         .progress-bar-bg { width: 100%; height: 6px; background-color: #E5E7EB; border-radius: 3px; margin-top: 15px; overflow: hidden; }
         .progress-bar-fill { width: 0%; height: 100%; background-color: var(--primary-green); border-radius: 3px; transition: width 1s ease; }
-
-        /* Quote Card */
-        .quote-card {
-            background: var(--white); border-radius: 24px; padding: 24px 20px; margin-top: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.02); text-align: center; border: 1px solid #F3F4F6;
-        }
-        .quote-text { font-size: 15px; line-height: 1.8; color: var(--text-dark); font-style: italic; font-weight: 600; letter-spacing: 0.5px; }
-        .quote-author { display: flex; align-items: center; justify-content: flex-end; margin-top: 15px; font-size: 12px; color: var(--primary-green); font-weight: bold; }
-        .quote-author::before { content: ""; width: 30px; height: 1px; background-color: #A7F3D0; margin-right: 10px; }
 
         /* Tabs */
         .tabs-wrapper { display: flex; background-color: var(--gray-pill); border-radius: 16px; padding: 4px; margin: 20px 0; }
         .tab { flex: 1; text-align: center; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: bold; color: var(--text-gray); cursor: pointer; transition: all 0.2s; }
         .tab.active { background-color: var(--white); color: var(--primary-green); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Form Styling */
-        .form-card { background: var(--white); border-radius: 24px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; position: relative;}
-        .form-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin: 0 0 20px 0; }
-        .input-group { background: var(--input-bg); border-radius: 12px; display: flex; align-items: center; padding: 14px 16px; margin-bottom: 12px; border: 1px solid transparent; transition: border 0.2s; }
-        .input-group:focus-within { border: 1px solid #D1D5DB; }
-        .input-group input, .input-group select, .input-group textarea { border: none; background: transparent; width: 100%; font-size: 15px; color: var(--text-dark); outline: none; font-weight: 600; appearance: none; -webkit-appearance: none; }
-        .input-group input::placeholder, .input-group textarea::placeholder { color: var(--text-light-gray); font-weight: 500; }
-        .input-row { display: flex; gap: 12px; margin-bottom: 12px; }
-        .input-row .input-group { margin-bottom: 0; flex: 1; }
-        textarea { resize: none; height: 100px; line-height: 1.5; margin-top: 5px; }
-        .btn-submit {
-            width: 100%; background: #F3F4F6; color: #9CA3AF; border: none; padding: 16px; border-radius: 12px;
-            font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.2s; margin-top: 10px;
-        }
-        .btn-submit.active { background: var(--primary-green); color: white; box-shadow: 0 4px 15px rgba(62,142,126,0.3); }
-
-        /* Level Badge */
-        .level-badge { position: absolute; top: 20px; right: 20px; background: var(--light-green-bg); color: var(--primary-green); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 800; border: 1px solid #A7F3D0;}
+        /* Login Section */
+        #login-section { text-align: center; padding: 40px 20px; background: white; border-radius: 24px; margin-bottom: 20px; }
 
         /* Calendar Styling */
         .calendar-container { background: var(--white); border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; font-size: 15px; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; }
-        .calendar-day-label { font-size: 11px; color: var(--text-light-gray); font-weight: bold; margin-bottom: 5px; }
-        .calendar-date { font-size: 13px; padding: 8px 0; border-radius: 10px; color: var(--text-dark); position: relative; font-weight: 600; }
-        .calendar-date.has-record::after { content: ""; width: 4px; height: 4px; background: var(--primary-green); border-radius: 50%; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); }
-        .calendar-date.today { background: var(--primary-green); color: white !important; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-btn { border: none; background: var(--gray-pill); padding: 5px 10px; border-radius: 8px; cursor: pointer; color: var(--primary-green); font-weight: bold; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+        .calendar-day-label { font-size: 11px; color: var(--text-light-gray); font-weight: bold; }
+        .calendar-date { font-size: 13px; padding: 10px 0; border-radius: 12px; color: var(--text-dark); position: relative; font-weight: 600; cursor: pointer; }
+        .calendar-date.has-record::after { content: ""; width: 5px; height: 5px; border-radius: 50%; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); }
+        .calendar-date.rec-purple::after { background: var(--purple-main); }
+        .calendar-date.rec-orange::after { background: var(--orange-main); }
+        .calendar-date.rec-default::after { background: var(--primary-green); }
+        .calendar-date.today { border: 1.5px solid var(--primary-green); }
+
+        /* Form Styling */
+        .form-card { background: var(--white); border-radius: 24px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; position: relative;}
+        .input-group { background: var(--input-bg); border-radius: 12px; display: flex; align-items: center; padding: 14px 16px; margin-bottom: 12px; }
+        .input-group input, .input-group select, .input-group textarea { border: none; background: transparent; width: 100%; font-size: 15px; outline: none; font-weight: 600; }
+        .btn-submit { width: 100%; background: #F3F4F6; color: #9CA3AF; border: none; padding: 16px; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .btn-submit.active { background: var(--primary-green); color: white; box-shadow: 0 4px 15px rgba(62,142,126,0.3); }
 
         /* Streak Badges */
-        .streak-container { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
-        .streak-badge { flex-shrink: 0; background: white; padding: 10px 16px; border-radius: 16px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); border: 1px solid #F3F4F6; display: none; }
-        .streak-badge.active { display: flex; animation: bounceIn 0.6s ease; }
-        .streak-icon { font-size: 20px; }
-        .streak-info { line-height: 1.2; }
-        .streak-num { font-size: 16px; font-weight: 800; color: var(--primary-green); }
-        .streak-label { font-size: 10px; color: var(--text-gray); font-weight: bold; }
+        .streak-container { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding: 5px 0; }
+        .streak-badge { flex-shrink: 0; background: white; padding: 10px 16px; border-radius: 16px; display: none; align-items: center; gap: 8px; border: 1px solid #F3F4F6; }
+        .streak-badge.active { display: flex; }
 
-        @keyframes bounceIn {
-            0% { opacity: 0; transform: scale(0.3); }
-            50% { opacity: 1; transform: scale(1.05); }
-            70% { transform: scale(0.9); }
-            100% { transform: scale(1); }
-        }
-
-        /* Record Cards */
-        .list-header { font-size: 14px; font-weight: bold; color: var(--text-gray); margin: 20px 0 15px 5px; }
-        .record-card { background: var(--white); border-radius: 24px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 16px; position: relative; overflow: hidden; }
-        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-        .avatar-box { width: 44px; height: 44px; border-radius: 14px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;}
-        .avatar-box.personal { background-color: #F9F5FF; }
-        .avatar-box.partner { background-color: #EFF6FF; }
-        .card-info { margin-left: 12px; flex: 1; }
-        .card-name { font-size: 15px; font-weight: bold; color: var(--text-dark); }
-        .status-badge { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: bold; }
+        /* 其他原有樣式保留... */
+        .record-card { background: var(--white); border-radius: 24px; padding: 20px; margin-bottom: 16px; position: relative; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .status-badge { font-size: 13px; font-weight: bold; }
         .status-badge.purple { color: var(--purple-main); }
         .status-badge.orange { color: var(--orange-main); }
-        .status-badge.gray { color: var(--text-light-gray); }
-        .personal-ribbon { position: absolute; top: 0; right: 20px; color: white; padding: 6px 12px; border-radius: 0 0 12px 12px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; }
-        .personal-ribbon.purple { background: var(--purple-main); }
-        .personal-ribbon.orange { background: var(--orange-main); }
-        .tags { display: flex; gap: 8px; margin: 12px 0 15px 0; }
         .tag { padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; }
         .tag-duration.purple { background: var(--purple-light); color: var(--purple-main); }
         .tag-duration.orange { background: var(--orange-light); color: var(--orange-main); }
         .tag-duration.default { background: var(--gray-pill); color: var(--text-gray); }
-        .tag-chakra { background: var(--gray-pill); color: var(--text-gray); }
-        .reflection-text { font-size: 15px; line-height: 1.6; color: var(--text-dark); font-style: italic; }
-        .loading { text-align: center; color: var(--text-gray); padding: 40px; font-weight: bold; }
+        .reflection-text { font-size: 15px; color: var(--text-dark); font-style: italic; margin-top: 10px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
 <div class="app-container">
-    
-    <div class="header">
-        <div class="header-left">
-            <div class="heart-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-            </div>
-            <div class="header-text">
-                <h1>階段 4：身心舒坦</h1>
-                <p>目前禪定狀態</p>
-            </div>
+    <div id="login-section">
+        <h2 style="font-size: 18px; margin-bottom: 10px;">歡迎回來</h2>
+        <p style="color: var(--text-gray); font-size: 14px; margin-bottom: 20px;">請先登入 Google 帳號以同步您的禪定紀錄</p>
+        <div id="g_id_onload"
+             data-client_id="YOUR_GOOGLE_CLIENT_ID" 
+             data-callback="handleCredentialResponse"
+             data-auto_prompt="false">
         </div>
-        <div class="header-right">
-            <h2 class="points" id="header-points">0</h2>
-            <p class="subtitle" id="header-goal">/ 3333 能量累積</p>
-        </div>
-    </div>
-    <div class="progress-bar-bg"><div class="progress-bar-fill" id="header-progress-fill"></div></div>
-
-    <div class="quote-card">
-        <div class="quote-text">「禪令忙碌的人找到寧靜，禪令痛苦的人解脫煩惱，禪令快樂的人獲得智慧，禪令不平凡的人，明瞭平凡的真諦。」</div>
-        <div class="quote-author">禪宗第 85 代宗師 悟覺妙天禪師</div>
+        <div class="g_id_signin" data-type="standard"></div>
     </div>
 
-    <div class="tabs-wrapper">
-        <div class="tab active" onclick="switchTab('today')" id="btn-today">今日紀錄</div>
-        <div class="tab" onclick="switchTab('progress')" id="btn-progress">成長進度</div>
-        <div class="tab" onclick="switchTab('partner')" id="btn-partner">夥伴心得</div>
-    </div>
+    <div id="main-content" style="display: none;">
+        <div class="header">
+            <div class="header-left">
+                <div class="heart-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                </div>
+                <div class="header-text">
+                    <h1 id="user-display-name">使用者</h1>
+                    <p>目前禪定狀態</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <h2 class="points" id="header-points">0</h2>
+                <p style="font-size: 12px; color: var(--text-gray);">/ 3333 能量累積</p>
+            </div>
+        </div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="header-progress-fill"></div></div>
 
-    <div id="tab-today" class="tab-content active">
-        <div class="streak-container" id="streak-badges">
-            <div class="streak-badge" id="badge-7"><span class="streak-icon">🔥</span><div class="streak-info"><div class="streak-num">7天</div><div class="streak-label">連續達標</div></div></div>
-            <div class="streak-badge" id="badge-21"><span class="streak-icon">💎</span><div class="streak-info"><div class="streak-num">21天</div><div class="streak-label">改變慣性</div></div></div>
-            <div class="streak-badge" id="badge-50"><span class="streak-icon">✨</span><div class="streak-info"><div class="streak-num">50天</div><div class="streak-label">身心舒坦</div></div></div>
-            <div class="streak-badge" id="badge-100"><span class="streak-icon">👑</span><div class="streak-info"><div class="streak-num">100天</div><div class="streak-label">禪修大師</div></div></div>
+        <div class="tabs-wrapper">
+            <div class="tab active" onclick="switchTab('today')" id="btn-today">今日紀錄</div>
+            <div class="tab" onclick="switchTab('progress')" id="btn-progress">成長進度</div>
+            <div class="tab" onclick="switchTab('partner')" id="btn-partner">夥伴心得</div>
         </div>
 
-        <div class="form-card">
-            <div id="user-level" class="level-badge">Level 0</div>
-            <div class="form-title">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3E8E7E" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                紀錄您的禪定
-            </div>
-            
-            <div class="input-group">
-                <input type="text" id="input-name" placeholder="我是誰？(姓名)" oninput="checkForm()">
-            </div>
-            
-            <div class="input-group">
-                <input type="date" id="input-date" style="color: #374151;" oninput="checkForm()">
+        <div id="tab-today" class="tab-content active">
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button class="calendar-btn" onclick="changeMonth(-1)">‹</button>
+                    <div id="calendar-month-label" style="font-weight: bold;">2026年 4月</div>
+                    <button class="calendar-btn" onclick="changeMonth(1)">›</button>
+                </div>
+                <div class="calendar-grid">
+                    <div class="calendar-day-label">日</div><div class="calendar-day-label">一</div><div class="calendar-day-label">二</div><div class="calendar-day-label">三</div><div class="calendar-day-label">四</div><div class="calendar-day-label">五</div><div class="calendar-day-label">六</div>
+                </div>
+                <div class="calendar-grid" id="calendar-grid"></div>
             </div>
 
-            <div class="input-row">
+            <div class="streak-container" id="streak-badges">
+                <div class="streak-badge" id="badge-7">🔥 7天</div>
+                <div class="streak-badge" id="badge-21">💎 21天</div>
+                <div class="streak-badge" id="badge-50">✨ 50天</div>
+                <div class="streak-badge" id="badge-100">👑 100天</div>
+            </div>
+
+            <div class="form-card">
                 <div class="input-group">
-                    <input type="number" id="input-duration" placeholder="分鐘" oninput="checkForm()">
+                    <input type="date" id="input-date" oninput="checkForm()">
                 </div>
-                <div class="input-group">
-                    <select id="input-chakra" onchange="checkForm()">
-                        <option value="" disabled selected>練習脈輪/方法</option>
-                        <option value="腹式呼吸">腹式呼吸</option>
-                        <option value="名色 脈輪">名色 脈輪</option>
-                        <option value="無始 脈輪">無始 脈輪</option>
-                        <option value="無明 脈輪">無明 脈輪</option>
-                        <option value="吉祥 脈輪">吉祥 脈輪</option>
-                        <option value="如意 脈輪">如意 脈輪</option>
-                        <option value="明心 脈輪">明心 脈輪</option>
-                        <option value="二空 脈輪">二空 脈輪</option>
-                        <option value="智慧 脈輪">智慧 脈輪</option>
-                        <option value="法眼 脈輪">法眼 脈輪</option>
-                        <option value="禪心 脈輪">禪心 脈輪</option>
-                    </select>
+                <div class="input-row" style="display: flex; gap: 10px;">
+                    <div class="input-group" style="flex: 1;">
+                        <input type="number" id="input-duration" placeholder="分鐘" oninput="checkForm()">
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <select id="input-chakra" onchange="checkForm()">
+                            <option value="" disabled selected>脈輪/方法</option>
+                            <option value="腹式呼吸">腹式呼吸</option>
+                            <option value="名色 脈輪">名色 脈輪</option>
+                            <option value="無始 脈輪">無始 脈輪</option>
+                            <option value="無明 脈輪">無明 脈輪</option>
+                            <option value="吉祥 脈輪">吉祥 脈輪</option>
+                            <option value="如意 脈輪">如意 脈輪</option>
+                            <option value="明心 脈輪">明心 脈輪</option>
+                            <option value="二空 脈輪">二空 脈輪</option>
+                            <option value="智慧 脈輪">智慧 脈輪</option>
+                            <option value="法眼 脈輪">法眼 脈輪</option>
+                            <option value="禪心 脈輪">禪心 脈輪</option>
+                        </select>
+                    </div>
                 </div>
+                <textarea id="input-reflection" class="input-group" placeholder="寫下您的心得發現..." oninput="checkForm()" style="height: 100px; padding: 15px; border-radius: 12px; background: var(--input-bg); border: none;"></textarea>
+                <button id="submit-btn" class="btn-submit" onclick="saveRecord()" disabled>送出禪定紀錄</button>
             </div>
 
-            <textarea id="input-reflection" class="input-group" placeholder="寫下您的心得發現..." oninput="checkForm()" style="width:100%; padding:15px; border-radius:12px; border:none; background:var(--input-bg);"></textarea>
-
-            <button id="submit-btn" class="btn-submit" onclick="saveRecord()" disabled>送出禪定紀錄</button>
+            <div class="list-header">您的禪定日誌</div>
+            <div id="my-records-container"></div>
         </div>
 
-        <div class="calendar-container">
-            <div class="calendar-header" id="calendar-month">2026年 4月</div>
-            <div class="calendar-grid" id="calendar-days">
-                <div class="calendar-day-label">日</div><div class="calendar-day-label">一</div><div class="calendar-day-label">二</div><div class="calendar-day-label">三</div><div class="calendar-day-label">四</div><div class="calendar-day-label">五</div><div class="calendar-day-label">六</div>
-            </div>
-            <div class="calendar-grid" id="calendar-grid"></div>
-        </div>
-
-        <div class="list-header" id="my-records-title" style="display:none;">您的禪定日誌</div>
-        <div id="my-records-container"></div>
-    </div>
-
-    <div id="tab-progress" class="tab-content">
-        <div class="form-card" style="text-align: center; padding: 30px;">
-            <div style="font-size: 14px; color: var(--text-gray); margin-bottom: 10px; font-weight: 600;">個人累積能量</div>
-            <div id="total-energy" style="font-size: 56px; font-weight: 800; color: var(--primary-green);">0</div>
-            
-            <div id="level-text" style="font-size: 14px; color: var(--primary-green); font-weight: bold; margin-top: 10px;">Level 1：建立習慣中</div>
-
-            <div style="display: flex; justify-content: space-around; margin-top: 30px; border-top: 1px dashed #E5E7EB; padding-top: 25px;">
-                <div>
-                    <div id="total-hours" style="font-size: 22px; font-weight: 800; color: var(--text-dark);">0</div>
-                    <div style="font-size: 12px; color: var(--text-gray); font-weight: 600;">總小時</div>
-                </div>
-                <div>
-                    <div id="total-sessions" style="font-size: 22px; font-weight: 800; color: var(--text-dark);">0</div>
-                    <div style="font-size: 12px; color: var(--text-gray); font-weight: 600;">禪定次數</div>
-                </div>
-                <div>
-                    <div id="current-streak" style="font-size: 22px; font-weight: 800; color: #EF4444;">0</div>
-                    <div style="font-size: 12px; color: var(--text-gray); font-weight: 600;">連續天數</div>
+        <div id="tab-progress" class="tab-content">
+            <div class="form-card" style="text-align: center;">
+                <div style="font-size: 14px; color: var(--text-gray);">個人累積能量</div>
+                <div id="total-energy" style="font-size: 48px; font-weight: 800; color: var(--primary-green);">0</div>
+                <div id="level-text" style="font-weight: bold; margin: 10px 0;">Level 0</div>
+                <div style="display: flex; justify-content: space-around; margin-top: 20px;">
+                    <div><div id="total-sessions" style="font-size: 20px; font-weight: bold;">0</div><div style="font-size: 12px;">次數</div></div>
+                    <div><div id="current-streak" style="font-size: 20px; font-weight: bold; color: #EF4444;">0</div><div style="font-size: 12px;">連續</div></div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div id="tab-partner" class="tab-content">
-        <div class="list-header">夥伴們的心得</div>
-        <div id="partner-records-container">
-            <div class="loading">正在從雲端讀取紀錄...</div>
+        <div id="tab-partner" class="tab-content">
+            <div class="list-header">夥伴們的心得</div>
+            <div id="partner-records-container"></div>
         </div>
     </div>
-
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbx6L86517PkUKKn3U1WfXTIt3D32VyR94nQ2_l-qC9Jc7W1jZleQ9gf7v_Rotvm-V3C/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbymJ3EnKrMk39UV8Kf9PmOqB5kQlqj9t6rrrr1H8YbZA8HRNu0CKpk9Yqx_LDdvYaDG/exec";
     let allRecords = [];
+    let currentUser = null;
+    let viewDate = new Date(); // 月曆顯示日期
 
-    window.onload = () => {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('input-date').value = today;
-        const savedName = localStorage.getItem('zen_user_name');
-        if(savedName) document.getElementById('input-name').value = savedName;
+    // Google Login Callback
+    function handleCredentialResponse(response) {
+        const payload = JSON.parse(atob(response.credential.split('.')[1]));
+        currentUser = {
+            email: payload.email,
+            name: payload.name,
+            picture: payload.picture
+        };
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        document.getElementById('user-display-name').innerText = currentUser.name;
         fetchData();
-        renderCalendar();
-    };
-
-    function switchTab(tabId) {
-        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.getElementById('btn-' + tabId).classList.add('active');
-        document.getElementById('tab-' + tabId).classList.add('active');
-        if(tabId === 'progress') renderProgress();
     }
 
-    function checkForm() {
-        const name = document.getElementById('input-name').value.trim();
-        const date = document.getElementById('input-date').value;
-        const duration = document.getElementById('input-duration').value;
-        const chakra = document.getElementById('input-chakra').value;
-        const reflection = document.getElementById('input-reflection').value.trim();
-        const btn = document.getElementById('submit-btn');
-        btn.disabled = !(name && date && duration && chakra && reflection);
-        btn.classList.toggle('active', !btn.disabled);
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById('btn-' + tabId).classList.add('active');
+        document.getElementById('tab-' + tabId).classList.add('active');
+        if(tabId === 'today') renderCalendar();
+    }
+
+    function changeMonth(step) {
+        viewDate.setMonth(viewDate.getMonth() + step);
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid');
+        const monthLabel = document.getElementById('calendar-month-label');
+        const year = viewDate.getFullYear(), month = viewDate.getMonth();
+        monthLabel.innerText = `${year}年 ${month + 1}月`;
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        // 取得當前使用者的紀錄日期對應與加權顏色
+        const myData = allRecords.filter(r => r.email === currentUser.email);
+        const recordMap = {};
+        myData.forEach(r => {
+            const d = r.date.split('T')[0];
+            const dur = parseInt(r.duration);
+            let type = 'rec-default';
+            if (dur >= 60) type = 'rec-purple';
+            else if (dur >= 40) type = 'rec-orange';
+            recordMap[d] = type;
+        });
+
+        grid.innerHTML = "";
+        for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
+        for(let d=1; d<=daysInMonth; d++) {
+            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const isToday = new Date().toISOString().split('T')[0] === dateStr;
+            const recClass = recordMap[dateStr] || '';
+            grid.innerHTML += `<div class="calendar-date ${isToday?'today':''} ${recClass?'has-record '+recClass:''}" onclick="showDateRecord('${dateStr}')">${d}</div>`;
+        }
+    }
+
+    function showDateRecord(date) {
+        const rec = allRecords.find(r => r.email === currentUser.email && r.date.split('T')[0] === date);
+        if(rec) alert(`${date}\n脈輪：${rec.chakra}\n時間：${rec.duration}分鐘\n心得：${rec.reflection}`);
     }
 
     async function fetchData() {
@@ -302,101 +271,28 @@
             allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
             renderPartnerRecords();
             renderMyRecords();
-            renderProgress();
             renderCalendar();
+            renderProgress();
         } catch(e) { console.error(e); }
     }
 
-    function renderProgress() {
-        const name = localStorage.getItem('zen_user_name') || document.getElementById('input-name').value.trim();
-        if(!name) return;
-
-        const myData = allRecords.filter(r => r.name === name);
-        let totalEnergy = 0, totalMin = 0;
-        const dates = [...new Set(myData.map(r => r.date.split('T')[0]))].sort();
-
-        myData.forEach(r => {
-            const d = parseInt(r.duration) || 0;
-            totalMin += d;
-            totalEnergy += (d >= 60) ? d*2 : (d >= 40) ? d*1.5 : d;
-        });
-
-        const streak = calculateStreak(dates);
-        const count = myData.length;
-        
-        // Level 判定
-        let lv = "Level 0", lvDesc = "開始您的第一步";
-        if(count >= 100) { lv = "Level 4"; lvDesc = "進階挑戰已達成"; }
-        else if(count >= 70) { lv = "Level 3"; lvDesc = "高度投入中"; }
-        else if(count >= 50) { lv = "Level 2"; lvDesc = "穩定練習中"; }
-        else if(count >= 30) { lv = "Level 1"; lvDesc = "已建立習慣"; }
-
-        document.getElementById('user-level').innerText = lv;
-        document.getElementById('total-energy').innerText = Math.floor(totalEnergy);
-        document.getElementById('total-hours').innerText = (totalMin/60).toFixed(1);
-        document.getElementById('total-sessions').innerText = count;
-        document.getElementById('current-streak').innerText = streak;
-        document.getElementById('level-text').innerText = `${lv}：${lvDesc}`;
-        document.getElementById('header-points').innerText = Math.floor(totalEnergy);
-        document.getElementById('header-progress-fill').style.width = Math.min((totalEnergy/3333)*100, 100) + "%";
-
-        // 勳章展示
-        document.getElementById('badge-7').classList.toggle('active', streak >= 7);
-        document.getElementById('badge-21').classList.toggle('active', streak >= 21);
-        document.getElementById('badge-50').classList.toggle('active', streak >= 50);
-        document.getElementById('badge-100').classList.toggle('active', streak >= 100);
-    }
-
-    function calculateStreak(dates) {
-        if(!dates.length) return 0;
-        let streak = 0;
-        let checkDate = new Date();
-        checkDate.setHours(0,0,0,0);
-        
-        const dateSet = new Set(dates);
-        
-        // 如果今天沒做，從昨天開始算，如果昨天也沒做，連續天數就是0
-        if(!dateSet.has(checkDate.toISOString().split('T')[0])) {
-            checkDate.setDate(checkDate.getDate() - 1);
-        }
-
-        while(dateSet.has(checkDate.toISOString().split('T')[0])) {
-            streak++;
-            checkDate.setDate(checkDate.getDate() - 1);
-        }
-        return streak;
-    }
-
-    function renderCalendar() {
-        const grid = document.getElementById('calendar-grid');
-        const monthLabel = document.getElementById('calendar-month');
-        const now = new Date();
-        const year = now.getFullYear(), month = now.getMonth();
-        monthLabel.innerText = `${year}年 ${month + 1}月`;
-        
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const name = localStorage.getItem('zen_user_name');
-        const myDates = new Set(allRecords.filter(r => r.name === name).map(r => r.date.split('T')[0]));
-
-        grid.innerHTML = "";
-        for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
-        for(let d=1; d<=daysInMonth; d++) {
-            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const isToday = new Date().toISOString().split('T')[0] === dateStr;
-            const hasRec = myDates.has(dateStr);
-            grid.innerHTML += `<div class="calendar-date ${isToday?'today':''} ${hasRec?'has-record':''}">${d}</div>`;
-        }
+    function checkForm() {
+        const d = document.getElementById('input-date').value;
+        const dur = document.getElementById('input-duration').value;
+        const c = document.getElementById('input-chakra').value;
+        const r = document.getElementById('input-reflection').value.trim();
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = !(d && dur && c && r);
+        btn.classList.toggle('active', !btn.disabled);
     }
 
     async function saveRecord() {
         const btn = document.getElementById('submit-btn');
         btn.innerText = "🚀 送出中..."; btn.disabled = true;
-        const name = document.getElementById('input-name').value.trim();
-        localStorage.setItem('zen_user_name', name);
 
         const newRecord = {
-            name: name, id: Date.now(),
+            email: currentUser.email, // 改為存 Email
+            name: currentUser.name,
             date: document.getElementById('input-date').value,
             duration: document.getElementById('input-duration').value,
             chakra: document.getElementById('input-chakra').value,
@@ -412,56 +308,80 @@
         btn.innerText = "送出禪定紀錄";
     }
 
+    // 計算連續天數
+    function calculateStreak(dates) {
+        if(!dates.length) return 0;
+        let streak = 0;
+        let checkDate = new Date();
+        checkDate.setHours(0,0,0,0);
+        const dateSet = new Set(dates);
+        if(!dateSet.has(checkDate.toISOString().split('T')[0])) checkDate.setDate(checkDate.getDate() - 1);
+        while(dateSet.has(checkDate.toISOString().split('T')[0])) {
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+        }
+        return streak;
+    }
+
+    function renderProgress() {
+        const myData = allRecords.filter(r => r.email === currentUser.email);
+        let energy = 0, sessions = myData.length;
+        const dates = [...new Set(myData.map(r => r.date.split('T')[0]))].sort();
+        myData.forEach(r => {
+            const d = parseInt(r.duration);
+            energy += (d>=60)?d*2 : (d>=40)?d*1.5 : d;
+        });
+        const streak = calculateStreak(dates);
+        
+        document.getElementById('total-energy').innerText = Math.floor(energy);
+        document.getElementById('header-points').innerText = Math.floor(energy);
+        document.getElementById('total-sessions').innerText = sessions;
+        document.getElementById('current-streak').innerText = streak;
+        document.getElementById('header-progress-fill').style.width = Math.min((energy/3333)*100, 100) + "%";
+
+        let lv = "Level 0";
+        if(sessions >= 100) lv = "Level 4: 進階挑戰";
+        else if(sessions >= 70) lv = "Level 3: 高度投入";
+        else if(sessions >= 50) lv = "Level 2: 穩定練習";
+        else if(sessions >= 30) lv = "Level 1: 建立習慣";
+        document.getElementById('level-text').innerText = lv;
+
+        document.getElementById('badge-7').classList.toggle('active', streak >= 7);
+        document.getElementById('badge-21').classList.toggle('active', streak >= 21);
+        document.getElementById('badge-50').classList.toggle('active', streak >= 50);
+        document.getElementById('badge-100').classList.toggle('active', streak >= 100);
+    }
+
     function renderPartnerRecords() {
         const container = document.getElementById('partner-records-container');
         container.innerHTML = allRecords.map(rec => {
             const dur = parseInt(rec.duration);
             const date = rec.date.split('T')[0];
-            const badge = dur >= 60 ? `purple">👑 ${date}` : dur >= 40 ? `orange">⚡ ${date}` : `gray">${date}`;
-            return `
-                <div class="record-card">
-                    <div class="card-top">
-                        <div style="display:flex; align-items:center;">
-                            <div class="avatar-box partner"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A90E2" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
-                            <div class="card-info"><div class="card-name">${rec.name || '夥伴'}</div></div>
-                        </div>
-                        <div class="status-badge ${badge}</div>
-                    </div>
-                    <div class="tags">
-                        <div class="tag tag-duration ${dur >= 60 ? 'purple' : dur >= 40 ? 'orange' : 'default'}">${rec.duration} 分鐘</div>
-                        <div class="tag tag-chakra">${rec.chakra}</div>
-                    </div>
-                    <div class="reflection-text">"${rec.reflection}"</div>
-                </div>`;
+            const color = dur >= 60 ? 'purple' : dur >= 40 ? 'orange' : 'gray';
+            return `<div class="record-card">
+                <div class="card-top" style="display:flex; justify-content:space-between">
+                    <b>${rec.name}</b> <span class="status-badge ${color}">${date}</span>
+                </div>
+                <div class="tags" style="margin: 10px 0;">
+                    <span class="tag tag-duration ${color}">${rec.duration} 分鐘</span>
+                    <span class="tag tag-chakra">${rec.chakra}</span>
+                </div>
+                <div class="reflection-text">"${rec.reflection}"</div>
+            </div>`;
         }).join('');
     }
 
     function renderMyRecords() {
         const container = document.getElementById('my-records-container');
-        const currentName = localStorage.getItem('zen_user_name');
-        const myData = allRecords.filter(r => r.name === currentName);
-        document.getElementById('my-records-title').style.display = myData.length ? 'block' : 'none';
+        const myData = allRecords.filter(r => r.email === currentUser.email);
         container.innerHTML = myData.map(rec => {
             const dur = parseInt(rec.duration);
-            const date = rec.date.split('T')[0];
-            const ribbon = dur >= 60 ? `<div class="personal-ribbon purple">👑 極致 2.0x</div>` : dur >= 40 ? `<div class="personal-ribbon orange">⚡ 深度 1.5x</div>` : "";
-            return `
-                <div class="record-card" style="padding-top:${ribbon?'35px':'20px'}">
-                    ${ribbon}
-                    <div class="card-top">
-                        <div style="display:flex;">
-                            <div class="avatar-box personal"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--purple-main)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div>
-                            <div class="card-info">
-                                <div class="card-name">${date}</div>
-                                <div class="tags" style="margin:6px 0 0 0">
-                                    <div class="tag tag-duration ${dur>=60?'purple':dur>=40?'orange':'default'}">${rec.duration} 分鐘</div>
-                                    <div class="tag tag-chakra">${rec.chakra}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="reflection-text" style="margin-top:10px">"${rec.reflection}"</div>
-                </div>`;
+            const color = dur >= 60 ? 'purple' : dur >= 40 ? 'orange' : 'default';
+            return `<div class="record-card">
+                <div class="card-name">${rec.date.split('T')[0]}</div>
+                <div class="tags"><span class="tag tag-duration ${color}">${rec.duration} 分鐘</span><span class="tag tag-chakra">${rec.chakra}</span></div>
+                <div class="reflection-text">"${rec.reflection}"</div>
+            </div>`;
         }).join('');
     }
 </script>
