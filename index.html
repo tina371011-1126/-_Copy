@@ -15,21 +15,29 @@
         }
         * { box-sizing: border-box; font-family: -apple-system, sans-serif; }
         body { background-color: var(--bg-color); margin: 0; display: flex; justify-content: center; color: var(--text-dark); }
-        .app-container { width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; padding-bottom: 40px;}
+        .app-container { width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; padding-bottom: 60px;}
+        
+        /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .header-left { display: flex; align-items: center; gap: 12px; }
-        .heart-icon { width: 48px; height: 48px; background-color: var(--primary-green); border-radius: 16px; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(62,142,126,0.2); }
-        .header-text h1 { margin: 0; font-size: 18px; }
+        .heart-icon { width: 48px; height: 48px; background-color: var(--primary-green); border-radius: 16px; display: flex; justify-content: center; align-items: center; font-size: 24px; }
+        .header-text h1 { margin: 0; font-size: 18px; display: flex; align-items: center; }
         .logout-link { font-size: 11px; color: var(--text-light-gray); cursor: pointer; text-decoration: underline; margin-left: 8px; font-weight: normal; }
         .header-right .points { margin: 0; font-size: 28px; font-weight: 800; color: var(--primary-green); }
+        
         .progress-bar-bg { width: 100%; height: 6px; background-color: #E5E7EB; border-radius: 3px; margin-top: 15px; overflow: hidden; }
         .progress-bar-fill { width: 0%; height: 100%; background-color: var(--primary-green); transition: width 1s ease; }
+
+        /* Tabs */
         .tabs-wrapper { display: flex; background-color: var(--gray-pill); border-radius: 16px; padding: 4px; margin: 20px 0; }
         .tab { flex: 1; text-align: center; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: bold; color: var(--text-gray); cursor: pointer; }
         .tab.active { background-color: var(--white); color: var(--primary-green); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+
         #login-section { text-align: center; padding: 60px 20px; background: white; border-radius: 24px; margin-top: 40px; }
+
+        /* Calendar */
         .calendar-container { background: var(--white); border-radius: 24px; padding: 20px; margin-bottom: 20px; }
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
@@ -39,19 +47,31 @@
         .calendar-date.rec-orange::after { background: var(--orange-main); }
         .calendar-date.rec-default::after { background: var(--primary-green); }
         .calendar-date.today { border: 1.5px solid var(--primary-green); }
+
+        /* Form */
         .form-card { background: var(--white); border-radius: 24px; padding: 24px; margin-bottom: 20px; }
-        .input-group { background: var(--input-bg); border-radius: 12px; display: flex; align-items: center; padding: 14px 16px; margin-bottom: 12px; }
+        .input-group { background: var(--input-bg); border-radius: 12px; display: flex; align-items: center; padding: 14px 16px; margin-bottom: 12px; width: 100%; }
         .input-group input, .input-group select, .input-group textarea { border: none; background: transparent; width: 100%; font-size: 15px; outline: none; color: var(--text-dark); }
         .btn-submit { width: 100%; background: #F3F4F6; color: #9CA3AF; border: none; padding: 16px; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn-submit.active { background: var(--primary-green); color: white; }
         .btn-submit.active.orange { background: var(--orange-main); }
         .btn-submit.active.purple { background: var(--purple-main); }
-        .record-card { background: var(--white); border-radius: 24px; padding: 20px; margin-bottom: 16px; }
-        .tag { padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; margin-right: 5px; }
+
+        /* Records Card */
+        .record-card { background: var(--white); border-radius: 24px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+        .tag { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-right: 5px; display: inline-flex; align-items: center; }
         .tag-duration.purple { background: var(--purple-light); color: var(--purple-main); }
         .tag-duration.orange { background: var(--orange-light); color: var(--orange-main); }
         .tag-duration.default { background: var(--gray-pill); color: var(--text-gray); }
-        .reflection-text { font-size: 15px; margin-top: 10px; font-style: normal; line-height: 1.5; }
+        .reflection-text { font-size: 15px; margin-top: 10px; line-height: 1.6; }
+
+        /* Search & Pagination */
+        .search-area { display: flex; gap: 8px; margin-bottom: 15px; }
+        .search-input { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #E5E7EB; font-size: 13px; }
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 20px; }
+        .page-btn { background: var(--primary-green); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+        .page-btn:disabled { background: #ccc; cursor: not-allowed; }
+
         .streak-container { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding: 5px 0; }
         .streak-badge { flex-shrink: 0; background: white; padding: 10px 16px; border-radius: 16px; display: none; align-items: center; gap: 8px; border: 1px solid #F3F4F6; font-size: 13px; font-weight: bold; }
         .streak-badge.active { display: flex; }
@@ -72,7 +92,7 @@
             <div class="header-left">
                 <div class="heart-icon">🧘</div>
                 <div class="header-text">
-                    <h1><span id="user-display-name">...</span><span class="logout-link" onclick="logout()">登出</span></h1>
+                    <h1><span id="user-display-name">載入中...</span><span class="logout-link" onclick="logout()">登出</span></h1>
                 </div>
             </div>
             <div class="header-right"><h2 class="points" id="header-points">0</h2></div>
@@ -118,7 +138,7 @@
                         </select>
                     </div>
                 </div>
-                <textarea id="input-reflection" class="input-group" placeholder="心得發現..." oninput="checkForm()" style="height:80px"></textarea>
+                <textarea id="input-reflection" class="input-group" placeholder="寫下您的心得發現..." oninput="checkForm()" style="height:100px;"></textarea>
                 <button id="submit-btn" class="btn-submit" onclick="saveRecord()" disabled>送出禪定紀錄</button>
             </div>
             <div id="my-records-container"></div>
@@ -126,9 +146,8 @@
 
         <div id="tab-progress" class="tab-content">
             <div class="form-card" style="text-align:center">
-                <div style="font-size: 14px; color: var(--text-gray);">累積能量</div>
-                <div id="total-energy" style="font-size:48px; font-weight: 800; color:var(--primary-green)">0</div>
-                <div id="level-text" style="font-weight: bold; color: var(--primary-green); margin: 10px 0;">Level 0</div>
+                <div id="total-energy" style="font-size:48px; color:var(--primary-green)">0</div>
+                <div id="level-text">Level 0</div>
                 <div style="display: flex; justify-content: space-around; margin-top: 20px;">
                     <div><div id="total-sessions" style="font-size: 20px; font-weight: bold;">0</div><div style="font-size: 12px;">累計次數</div></div>
                     <div><div id="current-streak" style="font-size: 20px; font-weight: bold; color: #EF4444;">0</div><div style="font-size: 12px;">連續天數</div></div>
@@ -137,17 +156,38 @@
         </div>
 
         <div id="tab-partner" class="tab-content">
+            <div class="search-area">
+                <input type="text" id="search-name" class="search-input" placeholder="搜尋人名..." oninput="resetPage()">
+                <select id="search-chakra" class="search-input" onchange="resetPage()">
+                    <option value="">所有脈輪</option>
+                    <option value="腹式呼吸">腹式呼吸</option><option value="脈輪">所有脈輪方法</option>
+                </select>
+            </div>
             <div id="partner-records-container"></div>
+            <div class="pagination">
+                <button id="prev-page" class="page-btn" onclick="changePage(-1)">上一頁</button>
+                <span id="page-info" style="font-size: 13px;">第 1 頁</span>
+                <button id="next-page" class="page-btn" onclick="changePage(1)">下一頁</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxOfUYiBqyu2lRnQO-8gXKXHFO4QdkSJHtluMu1O0bdlvAis4rIGLX8JEteawKixgK5/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbykWXMBlvpQW2F6b-QG_Ndpz8IJbcDbiUSxIxNmqycBtU7PaUGblNjw0B0ZMYnuRI3P/exec"; 
     let allRecords = [], currentUser = null, viewDate = new Date();
+    let currentPage = 1;
+    const itemsPerPage = 10;
 
+    // 解決中文亂碼的解析函式
     function handleCredentialResponse(response) {
-        const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const base64Url = response.credential.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        const payload = JSON.parse(jsonPayload);
+        
         currentUser = { email: payload.email, name: payload.name };
         localStorage.setItem('zenUser', JSON.stringify(currentUser));
         init();
@@ -164,7 +204,9 @@
 
     async function fetchData() {
         const res = await fetch(GAS_URL);
-        allRecords = await res.json();
+        const data = await res.json();
+        // 確保日期字串乾淨
+        allRecords = data.map(r => ({...r, date: String(r.date).split('T')[0]}));
         allRecords.sort((a,b) => new Date(b.date) - new Date(a.date));
         renderAll();
     }
@@ -173,16 +215,67 @@
         renderMyRecords(); renderPartnerRecords(); renderCalendar(); renderProgress();
     }
 
+    // 格式化顯示圖標
+    function getDurTag(dur) {
+        const d = parseInt(dur);
+        if(d >= 60) return `<span class="tag tag-duration purple">👑 ${d} min</span>`;
+        if(d >= 40) return `<span class="tag tag-duration orange">⚡ ${d} min</span>`;
+        return `<span class="tag tag-duration default">${d} min</span>`;
+    }
+
     function renderMyRecords() {
         const container = document.getElementById('my-records-container');
         const mine = allRecords.filter(r => r.email === currentUser.email);
-        container.innerHTML = mine.map(r => `<div class="record-card"><b>${r.date}</b><br><span class="tag tag-duration ${parseInt(r.duration)>=60?'purple':parseInt(r.duration)>=40?'orange':'default'}">${r.duration} min</span><div class="reflection-text">${r.reflection}</div></div>`).join('');
+        container.innerHTML = mine.slice(0, 5).map(r => `
+            <div class="record-card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <b style="font-size:14px;">${r.date}</b>
+                    ${getDurTag(r.duration)}
+                </div>
+                <div class="reflection-text">${r.reflection}</div>
+            </div>
+        `).join('');
     }
 
+    // 夥伴心得篩選與分頁
     function renderPartnerRecords() {
+        const nameKey = document.getElementById('search-name').value.toLowerCase();
+        const chakraKey = document.getElementById('search-chakra').value;
         const container = document.getElementById('partner-records-container');
-        container.innerHTML = allRecords.slice(0, 30).map(r => `<div class="record-card"><b>${r.name}</b> (${r.date})<br><div class="reflection-text">${r.reflection}</div></div>`).join('');
+        
+        const filtered = allRecords.filter(r => {
+            const matchName = r.name.toLowerCase().includes(nameKey);
+            const matchChakra = chakraKey === "" || r.chakra.includes(chakraKey);
+            return matchName && matchChakra;
+        });
+
+        const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+        if(currentPage > totalPages) currentPage = totalPages;
+
+        const start = (currentPage - 1) * itemsPerPage;
+        const paginated = filtered.slice(start, start + itemsPerPage);
+
+        container.innerHTML = paginated.map(r => `
+            <div class="record-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <b style="color:var(--primary-green)">${r.name}</b>
+                    <span style="font-size:12px; color:var(--text-gray)">${r.date}</span>
+                </div>
+                <div>
+                    ${getDurTag(r.duration)}
+                    <span class="tag" style="background:var(--light-green-bg); color:var(--primary-green)">${r.chakra}</span>
+                </div>
+                <div class="reflection-text">${r.reflection}</div>
+            </div>
+        `).join('');
+
+        document.getElementById('page-info').innerText = `第 ${currentPage} / ${totalPages} 頁`;
+        document.getElementById('prev-page').disabled = (currentPage === 1);
+        document.getElementById('next-page').disabled = (currentPage === totalPages);
     }
+
+    function changePage(step) { currentPage += step; renderPartnerRecords(); }
+    function resetPage() { currentPage = 1; renderPartnerRecords(); }
 
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid');
@@ -203,7 +296,7 @@
 
     function showDateRecord(date) {
         const rec = allRecords.find(r => r.email === currentUser.email && r.date === date);
-        alert(rec ? `【${date}】\n方法：${rec.chakra}\n時間：${rec.duration}分\n心得：${rec.reflection}` : `【${date}】\n無紀錄`);
+        alert(rec ? `【${date}】\n方法：${rec.chakra}\n時間：${rec.duration}分\n心得：${rec.reflection}` : `【${date}】\n本日無紀錄`);
     }
 
     function checkForm() {
@@ -241,7 +334,6 @@
             let d = parseInt(r.duration);
             energy += (d>=60?d*2:d>=40?d*1.5:d);
         });
-        
         const streak = calculateStreak(dates);
         document.getElementById('total-energy').innerText = Math.floor(energy);
         document.getElementById('header-points').innerText = Math.floor(energy);
@@ -249,7 +341,6 @@
         document.getElementById('current-streak').innerText = streak;
         document.getElementById('header-progress-fill').style.width = Math.min((energy/3333)*100, 100) + '%';
         
-        // 等級制判斷
         let lv = "Level 0：初入禪徑";
         if(mine.length >= 100) lv = "Level 4：進階挑戰";
         else if(mine.length >= 70) lv = "Level 3：高度投入";
@@ -257,7 +348,6 @@
         else if(mine.length >= 30) lv = "Level 1：建立習慣";
         document.getElementById('level-text').innerText = lv;
 
-        // 連續天數勳章
         [7, 21, 50, 100].forEach(num => {
             const b = document.getElementById(`badge-${num}`);
             if(b) b.classList.toggle('active', streak >= num);
