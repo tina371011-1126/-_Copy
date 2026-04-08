@@ -80,6 +80,9 @@
         .tag-duration.default { background: var(--gray-pill); color: var(--text-gray); }
         .reflection-text { font-size: 15px; color: var(--text-dark); font-style: italic; margin-top: 10px; line-height: 1.5; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Logout Link Style */
+        .logout-link { font-size: 11px; color: var(--text-light-gray); cursor: pointer; text-decoration: underline; margin-left: 5px; font-weight: normal; }
     </style>
 </head>
 <body>
@@ -103,7 +106,7 @@
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </div>
                 <div class="header-text">
-                    <h1 id="user-display-name">載入中...</h1>
+                    <h1><span id="user-display-name">載入中...</span><span class="logout-link" onclick="logout()">登出</span></h1>
                     <p>今日禪定狀態</p>
                 </div>
             </div>
@@ -194,38 +197,60 @@
     let currentUser = null;
     let viewDate = new Date();
 
-    // 1. Google 登入處理
+    // 1. Google 登入處理 (整合強壯解析與 localStorage)
     function handleCredentialResponse(response) {
-    try {
-        // 使用更安全的方式解析 Google 的 ID Token (支援中文與特殊字元)
-        const base64Url = response.credential.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
+        try {
+            const base64Url = response.credential.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
 
-        const payload = JSON.parse(jsonPayload);
-        
-        currentUser = {
-            email: payload.email,
-            name: payload.name,
-            picture: payload.picture
-        };
-        
-        // 介面切換
+            const payload = JSON.parse(jsonPayload);
+            
+            currentUser = {
+                email: payload.email,
+                name: payload.name,
+                picture: payload.picture
+            };
+            
+            // 存入本地存儲，防止重新整理登出
+            localStorage.setItem('zenUser', JSON.stringify(currentUser));
+            
+            showMainUI();
+            fetchData(); 
+        } catch (e) {
+            console.error("解析登入資料失敗", e);
+            alert("登入解析失敗，請確認是否使用正確的 Google 帳號。");
+        }
+    }
+
+    // 顯示主介面邏輯
+    function showMainUI() {
+        if (!currentUser) return;
         document.getElementById('login-section').style.display = 'none';
         document.getElementById('main-content').style.display = 'block';
         document.getElementById('user-display-name').innerText = currentUser.name;
-        
-        // 初始化預設日期
         document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
-        
-        fetchData(); 
-    } catch (e) {
-        console.error("解析登入資料失敗", e);
-        alert("登入解析失敗，請確認是否使用正確的 Google 帳號或更換瀏覽器重試。");
     }
-}
+
+    // 登出功能
+    function logout() {
+        if(confirm("確定要登出嗎？")) {
+            localStorage.removeItem('zenUser');
+            location.reload();
+        }
+    }
+
+    // 網頁啟動時自動檢查登入狀態
+    window.onload = function() {
+        const savedUser = localStorage.getItem('zenUser');
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
+            showMainUI();
+            fetchData();
+        }
+    };
 
     // 2. 切換頁籤
     function switchTab(tabId) {
@@ -243,10 +268,9 @@
             const rawData = await response.json();
             allRecords = rawData.map(r => ({
                 ...r,
-                date: r.date ? r.date.split('T')[0] : "" // 統一日期格式
+                date: r.date ? r.date.split('T')[0] : "" 
             }));
             allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
-            
             renderAll();
         } catch(e) { 
             console.error("抓取失敗", e);
@@ -276,7 +300,6 @@
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        // 個人紀錄映射
         const myData = allRecords.filter(r => r.email === currentUser.email);
         const recordMap = {};
         myData.forEach(r => {
