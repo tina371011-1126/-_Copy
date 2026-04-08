@@ -15,6 +15,8 @@
             --text-light-gray: #9CA3AF;
             --purple-main: #8B5CF6;
             --purple-light: #F3E8FF;
+            --orange-main: #F57C00;
+            --orange-light: #FFF3E0;
             --gray-pill: #F3F4F6;
             --input-bg: #F9FAFB;
         }
@@ -83,10 +85,9 @@
 
         /* Partner/Personal Cards */
         .list-header { font-size: 14px; font-weight: bold; color: var(--text-gray); margin: 20px 0 15px 5px; }
-        .record-card { background: var(--white); border-radius: 24px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 16px; position: relative; }
+        .record-card { background: var(--white); border-radius: 24px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 16px; position: relative; overflow: hidden; }
         .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
         
-        /* Personal Icon vs Partner Icon */
         .avatar-box { width: 44px; height: 44px; border-radius: 14px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;}
         .avatar-box.personal { background-color: #F9F5FF; }
         .avatar-box.partner { background-color: #EFF6FF; }
@@ -95,35 +96,23 @@
         .card-name { font-size: 15px; font-weight: bold; color: var(--text-dark); }
         .card-date { font-size: 13px; color: var(--text-light-gray); margin-top: 4px; font-weight: 600; }
         
-        .crown-badge { display: flex; align-items: center; gap: 4px; color: var(--text-light-gray); font-size: 13px; font-weight: bold; }
-        .crown-badge.highlight { color: var(--purple-main); }
+        .status-badge { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: bold; }
+        .status-badge.purple { color: var(--purple-main); }
+        .status-badge.orange { color: var(--orange-main); }
+        .status-badge.gray { color: var(--text-light-gray); }
         
-        /* Special Ribbon for Personal 2.0x */
-        .personal-ribbon { position: absolute; top: 0; right: 20px; background: var(--purple-main); color: white; padding: 6px 12px; border-radius: 0 0 12px 12px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; }
+        .personal-ribbon { position: absolute; top: 0; right: 20px; color: white; padding: 6px 12px; border-radius: 0 0 12px 12px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; }
+        .personal-ribbon.purple { background: var(--purple-main); }
+        .personal-ribbon.orange { background: var(--orange-main); }
 
         .tags { display: flex; gap: 8px; margin: 12px 0 15px 0; }
         .tag { padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; }
-        .tag-duration { background: var(--purple-light); color: var(--purple-main); }
+        .tag-duration.purple { background: var(--purple-light); color: var(--purple-main); }
+        .tag-duration.orange { background: var(--orange-light); color: var(--orange-main); }
+        .tag-duration.default { background: var(--gray-pill); color: var(--text-gray); }
         .tag-chakra { background: var(--gray-pill); color: var(--text-gray); }
 
         .reflection-text { font-size: 15px; line-height: 1.6; color: var(--text-dark); font-style: italic; }
-
-        /* Progress Tab Specifics */
-        .progress-banner { background: #336B5E; color: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; }
-        .progress-banner h3 { margin: 0 0 8px 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
-        .progress-banner p { margin: 0; font-size: 13px; color: #A7F3D0; }
-        
-        .stage-card { background: var(--white); border-radius: 20px; padding: 16px 20px; margin-bottom: 12px; display: flex; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.02); border: 1px solid transparent; }
-        .stage-card.unlocked { border: 1px solid #D1FAE5; background-color: var(--white); }
-        .stage-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--gray-pill); display: flex; justify-content: center; align-items: center; margin-right: 15px; }
-        .stage-card.unlocked .stage-icon { background: #D1FAE5; color: var(--primary-green); }
-        .stage-info { flex: 1; }
-        .stage-title { font-size: 15px; font-weight: bold; margin: 0 0 4px 0; color: var(--text-gray); }
-        .stage-card.unlocked .stage-title { color: var(--text-dark); }
-        .stage-desc { font-size: 12px; color: var(--text-light-gray); margin: 0; }
-        .stage-card.unlocked .stage-desc { color: var(--text-gray); }
-        .stage-status { font-size: 13px; font-weight: bold; color: var(--text-light-gray); }
-        .stage-card.unlocked .stage-status { color: var(--primary-green); }
 
         .loading { text-align: center; color: var(--text-gray); padding: 40px; font-weight: bold; }
     </style>
@@ -199,60 +188,7 @@
     </div>
 
     <div id="tab-progress" class="tab-content">
-        <div class="progress-banner">
-            <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M8 21h8m-4-4v4m0-18v4m5 0h2a2 2 0 0 1 2 2v2a5 5 0 0 1-5 5h-1m-4-9H4a2 2 0 0 0-2 2v2a5 5 0 0 0 5 5h1"></path></svg> 禪定成長指南</h3>
-            <p><b>40+</b> 分鐘 <b>1.5x</b> | <b style="color:#E9D5FF;">60+</b> 分鐘 <b style="color:#E9D5FF;">2.0x</b> 加權。</p>
-        </div>
-
-        <div class="stage-card unlocked">
-            <div class="stage-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div>
-            <div class="stage-info">
-                <p class="stage-title">階段 1：靜心起步</p>
-                <p class="stage-desc" style="color:var(--primary-green); font-weight:bold; margin-bottom:2px;">「今日小歇」勳章</p>
-                <p class="stage-desc">養成每天給自己 10 分鐘的習慣</p>
-            </div>
-            <div class="stage-status">✓ 已解鎖</div>
-        </div>
-
-        <div class="stage-card unlocked">
-            <div class="stage-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="M8 17l4 4 4-4"></path></svg></div>
-            <div class="stage-info">
-                <p class="stage-title">階段 2：呼吸自在</p>
-                <p class="stage-desc" style="color:var(--primary-green); font-weight:bold; margin-bottom:2px;">「森林深呼吸」背景音</p>
-                <p class="stage-desc">感覺呼吸變順暢了，心不再那麼急促</p>
-            </div>
-            <div class="stage-status">✓ 已解鎖</div>
-        </div>
-        
-        <div class="stage-card unlocked">
-            <div class="stage-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg></div>
-            <div class="stage-info">
-                <p class="stage-title">階段 3：專注當下</p>
-                <p class="stage-desc" style="color:var(--primary-green); font-weight:bold; margin-bottom:2px;">「告別雜念」頭銜</p>
-                <p class="stage-desc">不再被手機通知牽著走，專注力提升</p>
-            </div>
-            <div class="stage-status">✓ 已解鎖</div>
-        </div>
-
-        <div class="stage-card unlocked">
-            <div class="stage-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></div>
-            <div class="stage-info">
-                <p class="stage-title">階段 4：身心舒坦</p>
-                <p class="stage-desc" style="color:var(--primary-green); font-weight:bold; margin-bottom:2px;">「深度放鬆」導引</p>
-                <p class="stage-desc">睡得更香，起床時感覺更有活力</p>
-            </div>
-            <div class="stage-status">✓ 已解鎖</div>
-        </div>
-
-        <div class="stage-card">
-            <div class="stage-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></div>
-            <div class="stage-info">
-                <p class="stage-title">階段 5：智慧湧現</p>
-                <p class="stage-desc" style="font-weight:bold; margin-bottom:2px;">「靈感湧泉」背景</p>
-                <p class="stage-desc">面對困難時，內心更能保持平穩</p>
-            </div>
-            <div class="stage-status">需累積 16 能量</div>
-        </div>
+        <div class="loading">成長進度讀取中...</div>
     </div>
 
     <div id="tab-partner" class="tab-content">
@@ -265,34 +201,24 @@
 </div>
 
 <script>
-    // 您提供的 GAS URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbx6L86517PkUKKn3U1WfXTIt3D32VyR94nQ2_l-qC9Jc7W1jZleQ9gf7v_Rotvm-V3C/exec";
-    
     let allRecords = [];
 
-    // 1. 初始化
     window.onload = () => {
-        // 預設填入今天的日期
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('input-date').value = today;
-        
-        // 讀取 LocalStorage 記住的名字
         const savedName = localStorage.getItem('zen_user_name');
         if(savedName) document.getElementById('input-name').value = savedName;
-
         fetchData();
     };
 
-    // 2. 切換 Tab 邏輯
     function switchTab(tabId) {
         document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        
         document.getElementById('btn-' + tabId).classList.add('active');
         document.getElementById('tab-' + tabId).classList.add('active');
     }
 
-    // 3. 表單驗證 (輸入中自動檢查按鈕狀態)
     function checkForm() {
         const name = document.getElementById('input-name').value.trim();
         const date = document.getElementById('input-date').value;
@@ -304,31 +230,25 @@
         if(name && date && duration && chakra && reflection) {
             btn.disabled = false;
             btn.classList.add('active');
-            btn.innerText = "送出禪定紀錄";
         } else {
             btn.disabled = true;
             btn.classList.remove('active');
         }
     }
 
-    // 4. 計算紀錄類型 (自動加權)
     function calculateType(duration) {
         if(duration >= 60) return "極致禪定 (2.0x)";
         if(duration >= 40) return "深度禪定 (1.5x)";
         return "一般禪定";
     }
 
-    // 5. 儲存紀錄 (POST to GAS)
     async function saveRecord() {
         const btn = document.getElementById('submit-btn');
         btn.innerText = "🚀 送出中...";
-        btn.classList.remove('active');
         btn.disabled = true;
 
         const name = document.getElementById('input-name').value.trim();
         const duration = parseInt(document.getElementById('input-duration').value);
-        
-        // 記住使用者姓名
         localStorage.setItem('zen_user_name', name);
 
         const newRecord = {
@@ -337,143 +257,118 @@
             date: document.getElementById('input-date').value,
             duration: duration,
             chakra: document.getElementById('input-chakra').value.trim(),
-            type: calculateType(duration), // 自動判斷
+            type: calculateType(duration),
             reflection: document.getElementById('input-reflection').value.trim()
         };
 
         try {
-            await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify(newRecord)
-            });
-            
-            // 清空部分表單
+            await fetch(GAS_URL, { method: "POST", body: JSON.stringify(newRecord) });
             document.getElementById('input-duration').value = "";
             document.getElementById('input-chakra').value = "";
             document.getElementById('input-reflection').value = "";
             checkForm();
-            
-            // 重新讀取資料
             await fetchData();
             alert("紀錄成功！能量已累積！");
-            
         } catch(e) {
-            console.error(e);
-            alert("伺服器連線異常，請稍後再試。");
+            alert("連線異常，請稍後再試。");
             btn.innerText = "送出禪定紀錄";
-            btn.disabled = false;
-            btn.classList.add('active');
+            checkForm();
         }
     }
 
-    // 6. 讀取紀錄 (GET from GAS)
     async function fetchData() {
         try {
             const response = await fetch(GAS_URL);
             allRecords = await response.json();
-            
-            // 將資料依照日期反向排序 (新的在上面)
             allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
-            
             renderPartnerRecords();
             renderMyRecords();
         } catch(e) {
-            document.getElementById('partner-records-container').innerHTML = `<div class="loading">讀取失敗，請確認網路連線。</div>`;
+            document.getElementById('partner-records-container').innerHTML = `<div class="loading">讀取失敗。</div>`;
         }
     }
 
-    // 7. 渲染畫面 (夥伴心得 - 圖片 d948e1 風格)
     function renderPartnerRecords() {
         const container = document.getElementById('partner-records-container');
         container.innerHTML = "";
         
-        if(allRecords.length === 0) {
-            container.innerHTML = `<div class="loading">目前還沒有夥伴紀錄喔！</div>`;
-            return;
-        }
-
         allRecords.forEach(rec => {
-            const isPurple = rec.type.includes('2.0x');
-            const crownClass = isPurple ? 'highlight' : '';
-            
+            const dur = parseInt(rec.duration);
+            let badgeHtml = `<div class="status-badge gray">${rec.date}</div>`;
+            let tagClass = "default";
+
+            if (dur >= 60) {
+                badgeHtml = `<div class="status-badge purple">👑 ${rec.date}</div>`;
+                tagClass = "purple";
+            } else if (dur >= 40) {
+                badgeHtml = `<div class="status-badge orange">⚡ ${rec.date}</div>`;
+                tagClass = "orange";
+            }
+
             container.innerHTML += `
                 <div class="record-card">
                     <div class="card-top">
-                        <div style="display:flex;">
+                        <div style="display:flex; align-items:center;">
                             <div class="avatar-box partner">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4A90E2" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                             </div>
-                            <div class="card-info">
-                                <div class="card-name">${rec.name || '夥伴'}</div>
-                            </div>
+                            <div class="card-info"><div class="card-name">${rec.name || '夥伴'}</div></div>
                         </div>
-                        <div style="text-align:right;">
-                            <div class="crown-badge ${crownClass}">
-                                ${isPurple ? '♛' : ''} ${rec.date}
-                            </div>
-                        </div>
+                        ${badgeHtml}
                     </div>
                     <div class="tags">
-                        <div class="tag tag-duration">${rec.duration} 分鐘</div>
+                        <div class="tag tag-duration ${tagClass}">${rec.duration} 分鐘</div>
                         <div class="tag tag-chakra">${rec.chakra}</div>
                     </div>
                     <div class="reflection-text">"${rec.reflection}"</div>
-                </div>
-            `;
+                </div>`;
         });
     }
 
-    // 8. 渲染畫面 (我的日誌 - 圖片 d945bf 風格)
     function renderMyRecords() {
         const container = document.getElementById('my-records-container');
         const title = document.getElementById('my-records-title');
         const currentName = localStorage.getItem('zen_user_name');
-        
         container.innerHTML = "";
-        
-        if(!currentName) {
-            title.style.display = 'none';
-            return;
-        }
+        if(!currentName) { title.style.display = 'none'; return; }
 
-        // 過濾出自己的紀錄
         const myData = allRecords.filter(r => r.name === currentName);
-        
-        if(myData.length > 0) {
-            title.style.display = 'block';
-        } else {
-            title.style.display = 'none';
-        }
+        title.style.display = myData.length > 0 ? 'block' : 'none';
 
         myData.forEach(rec => {
-            const isPurple = rec.type.includes('2.0x');
-            
-            // 如果是 2.0x 加上右上角特殊標籤
-            const ribbon = isPurple ? `<div class="personal-ribbon">♛ ${rec.type}</div>` : '';
+            const dur = parseInt(rec.duration);
+            let ribbon = "";
+            let tagClass = "default";
+
+            if (dur >= 60) {
+                ribbon = `<div class="personal-ribbon purple">👑 極致 2.0x</div>`;
+                tagClass = "purple";
+            } else if (dur >= 40) {
+                ribbon = `<div class="personal-ribbon orange">⚡ 深度 1.5x</div>`;
+                tagClass = "orange";
+            }
 
             container.innerHTML += `
-                <div class="record-card" style="padding-top: ${isPurple ? '35px' : '20px'};">
+                <div class="record-card" style="padding-top: ${ribbon ? '35px' : '20px'};">
                     ${ribbon}
                     <div class="card-top">
                         <div style="display:flex;">
                             <div class="avatar-box personal">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--purple-main)" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--purple-main)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                             </div>
                             <div class="card-info">
                                 <div class="card-name">${rec.date}</div>
                                 <div class="tags" style="margin: 6px 0 0 0;">
-                                    <div class="tag tag-duration">${rec.duration} 分鐘</div>
+                                    <div class="tag tag-duration ${tagClass}">${rec.duration} 分鐘</div>
                                     <div class="tag tag-chakra">${rec.chakra}</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="reflection-text" style="margin-top:15px;">"${rec.reflection}"</div>
-                </div>
-            `;
+                </div>`;
         });
     }
-
 </script>
 </body>
 </html>
