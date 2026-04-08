@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禪定日誌與進度</title>
+    <title>✨台科領禪定日誌✨</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -416,14 +416,36 @@
     function logout() { localStorage.removeItem('zenUser'); location.reload(); }
     
     async function deleteRecord(date, duration) {
-        if (!confirm("確定要刪除這條紀錄嗎？")) return;
-        const data = { action: 'delete', email: currentUser.email, date: date, duration: duration };
-        try {
-            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
+    if (!confirm("確定要完全刪除這條紀錄嗎？")) return;
+    
+    // 建立比對物件
+    const data = { 
+        action: 'delete', 
+        email: currentUser.email, 
+        date: date, 
+        duration: duration 
+    };
+
+    try {
+        const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
+        
+        if (response.ok) {
+            // 重點：同步從本地 allRecords 中過濾掉該筆資料，不留痕跡
+            allRecords = allRecords.filter(r => 
+                !(r.email === currentUser.email && r.date === date && r.duration.toString() === duration.toString())
+            );
+            
+            // 重新渲染畫面
+            renderAll(); 
             alert("刪除成功！");
-            fetchData();
-        } catch (e) { alert("刪除失敗"); }
+        } else {
+            throw new Error("Server response not ok");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("刪除失敗，請確認網路連線或稍後再試");
     }
+}
 
     window.onload = () => { 
         currentUser = JSON.parse(localStorage.getItem('zenUser')); 
