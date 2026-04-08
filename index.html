@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禪定日誌</title>
+    <title>禪定日誌與進度</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -15,7 +15,7 @@
         }
         * { box-sizing: border-box; font-family: -apple-system, sans-serif; }
         body { background-color: var(--bg-color); margin: 0; display: flex; justify-content: center; color: var(--text-dark); }
-        .app-container { width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; }
+        .app-container { width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; padding-bottom: 40px;}
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .header-left { display: flex; align-items: center; gap: 12px; }
         .heart-icon { width: 48px; height: 48px; background-color: var(--primary-green); border-radius: 16px; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(62,142,126,0.2); }
@@ -41,7 +41,7 @@
         .calendar-date.today { border: 1.5px solid var(--primary-green); }
         .form-card { background: var(--white); border-radius: 24px; padding: 24px; margin-bottom: 20px; }
         .input-group { background: var(--input-bg); border-radius: 12px; display: flex; align-items: center; padding: 14px 16px; margin-bottom: 12px; }
-        .input-group input, .input-group select, .input-group textarea { border: none; background: transparent; width: 100%; font-size: 15px; outline: none; }
+        .input-group input, .input-group select, .input-group textarea { border: none; background: transparent; width: 100%; font-size: 15px; outline: none; color: var(--text-dark); }
         .btn-submit { width: 100%; background: #F3F4F6; color: #9CA3AF; border: none; padding: 16px; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn-submit.active { background: var(--primary-green); color: white; }
         .btn-submit.active.orange { background: var(--orange-main); }
@@ -51,7 +51,10 @@
         .tag-duration.purple { background: var(--purple-light); color: var(--purple-main); }
         .tag-duration.orange { background: var(--orange-light); color: var(--orange-main); }
         .tag-duration.default { background: var(--gray-pill); color: var(--text-gray); }
-        .reflection-text { font-size: 15px; margin-top: 10px; font-style: italic; }
+        .reflection-text { font-size: 15px; margin-top: 10px; font-style: normal; line-height: 1.5; }
+        .streak-container { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding: 5px 0; }
+        .streak-badge { flex-shrink: 0; background: white; padding: 10px 16px; border-radius: 16px; display: none; align-items: center; gap: 8px; border: 1px solid #F3F4F6; font-size: 13px; font-weight: bold; }
+        .streak-badge.active { display: flex; }
     </style>
 </head>
 <body>
@@ -92,6 +95,13 @@
                 <div class="calendar-grid" id="calendar-grid"></div>
             </div>
 
+            <div class="streak-container" id="streak-badges">
+                <div class="streak-badge" id="badge-7">🔥 7天</div>
+                <div class="streak-badge" id="badge-21">💎 21天</div>
+                <div class="streak-badge" id="badge-50">✨ 50天</div>
+                <div class="streak-badge" id="badge-100">👑 100天</div>
+            </div>
+
             <div class="form-card">
                 <div class="input-group"><input type="date" id="input-date" oninput="checkForm()"></div>
                 <div style="display: flex; gap: 10px;">
@@ -116,8 +126,13 @@
 
         <div id="tab-progress" class="tab-content">
             <div class="form-card" style="text-align:center">
-                <div id="total-energy" style="font-size:48px; color:var(--primary-green)">0</div>
-                <div id="level-text">Level 0</div>
+                <div style="font-size: 14px; color: var(--text-gray);">累積能量</div>
+                <div id="total-energy" style="font-size:48px; font-weight: 800; color:var(--primary-green)">0</div>
+                <div id="level-text" style="font-weight: bold; color: var(--primary-green); margin: 10px 0;">Level 0</div>
+                <div style="display: flex; justify-content: space-around; margin-top: 20px;">
+                    <div><div id="total-sessions" style="font-size: 20px; font-weight: bold;">0</div><div style="font-size: 12px;">累計次數</div></div>
+                    <div><div id="current-streak" style="font-size: 20px; font-weight: bold; color: #EF4444;">0</div><div style="font-size: 12px;">連續天數</div></div>
+                </div>
             </div>
         </div>
 
@@ -128,7 +143,7 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwAnM06m44l3PrEg6qnHU7SH1UBhrdKixtJ-0Cb8r45z9MvDh4gRKk4qQzqL1E0LgY/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxOfUYiBqyu2lRnQO-8gXKXHFO4QdkSJHtluMu1O0bdlvAis4rIGLX8JEteawKixgK5/exec"; 
     let allRecords = [], currentUser = null, viewDate = new Date();
 
     function handleCredentialResponse(response) {
@@ -166,7 +181,7 @@
 
     function renderPartnerRecords() {
         const container = document.getElementById('partner-records-container');
-        container.innerHTML = allRecords.slice(0, 20).map(r => `<div class="record-card"><b>${r.name}</b> (${r.date})<br><div class="reflection-text">${r.reflection}</div></div>`).join('');
+        container.innerHTML = allRecords.slice(0, 30).map(r => `<div class="record-card"><b>${r.name}</b> (${r.date})<br><div class="reflection-text">${r.reflection}</div></div>`).join('');
     }
 
     function renderCalendar() {
@@ -221,13 +236,42 @@
     function renderProgress() {
         const mine = allRecords.filter(r => r.email === currentUser.email);
         let energy = 0;
+        const dates = [...new Set(mine.map(r => r.date))].sort();
         mine.forEach(r => {
             let d = parseInt(r.duration);
             energy += (d>=60?d*2:d>=40?d*1.5:d);
         });
+        
+        const streak = calculateStreak(dates);
         document.getElementById('total-energy').innerText = Math.floor(energy);
         document.getElementById('header-points').innerText = Math.floor(energy);
+        document.getElementById('total-sessions').innerText = mine.length;
+        document.getElementById('current-streak').innerText = streak;
         document.getElementById('header-progress-fill').style.width = Math.min((energy/3333)*100, 100) + '%';
+        
+        // 等級制判斷
+        let lv = "Level 0：初入禪徑";
+        if(mine.length >= 100) lv = "Level 4：進階挑戰";
+        else if(mine.length >= 70) lv = "Level 3：高度投入";
+        else if(mine.length >= 50) lv = "Level 2：穩定練習";
+        else if(mine.length >= 30) lv = "Level 1：建立習慣";
+        document.getElementById('level-text').innerText = lv;
+
+        // 連續天數勳章
+        [7, 21, 50, 100].forEach(num => {
+            const b = document.getElementById(`badge-${num}`);
+            if(b) b.classList.toggle('active', streak >= num);
+        });
+    }
+
+    function calculateStreak(dates) {
+        if(!dates.length) return 0;
+        let streak = 0, check = new Date();
+        check.setHours(0,0,0,0);
+        const set = new Set(dates);
+        if(!set.has(check.toISOString().split('T')[0])) check.setDate(check.getDate() - 1);
+        while(set.has(check.toISOString().split('T')[0])) { streak++; check.setDate(check.getDate() - 1); }
+        return streak;
     }
 
     function switchTab(id) {
