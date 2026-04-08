@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>禪定日誌與進度</title>
+    <style>
+        :root {
+            --bg-color: #F7F9FA;
+            --white: #FFFFFF;
+            --primary-green: #3E8E7E;
+            --light-green-bg: #F0FDF4;
+            --text-dark: #374151;
+            --text-gray: #8CA3A7;
+            --text-light-gray: #9CA3AF;
+            --purple-main: #8B5CF6;
+            --purple-light: #F3E8FF;
+            --gray-pill: #F3F4F6;
+            --input-bg: #F9FAFB;
+        }
+
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            margin: 0; padding: 0;
+            display: flex; justify-content: center;
+            color: var(--text-dark);
+        }
+
+        .app-container { width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; padding-bottom: 40px;}
+
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .heart-icon {
+            width: 48px; height: 48px; background-color: var(--primary-green); border-radius: 16px;
+            display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(62,142,126,0.2);
+        }
+        .header-text h1 { margin: 0; font-size: 18px; font-weight: 700; }
+        .header-text p { margin: 2px 0 0; font-size: 13px; color: var(--primary-green); font-weight: 600; }
+        .header-right { text-align: right; }
+        .header-right .points { margin: 0; font-size: 28px; font-weight: 800; color: var(--primary-green); line-height: 1; }
+        .header-right .subtitle { margin: 4px 0 0; font-size: 12px; color: var(--text-gray); font-weight: 600; }
+        
+        .progress-bar-bg { width: 100%; height: 6px; background-color: #E5E7EB; border-radius: 3px; margin-top: 15px; overflow: hidden; }
+        .progress-bar-fill { width: 36%; height: 100%; background-color: var(--primary-green); border-radius: 3px; }
+
+        /* Quote Card */
+        .quote-card {
+            background: var(--white); border-radius: 24px; padding: 24px 20px; margin-top: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02); text-align: center; border: 1px solid #F3F4F6;
+        }
+        .quote-text { font-size: 15px; line-height: 1.8; color: var(--text-dark); font-style: italic; font-weight: 600; letter-spacing: 0.5px; }
+        .quote-author { display: flex; align-items: center; justify-content: flex-end; margin-top: 15px; font-size: 12px; color: var(--primary-green); font-weight: bold; }
+        .quote-author::before { content: ""; width: 30px; height: 1px; background-color: #A7F3D0; margin-right: 10px; }
+
+        /* Tabs */
+        .tabs-wrapper { display: flex; background-color: var(--gray-pill); border-radius: 16px; padding: 4px; margin: 20px 0; }
+        .tab { flex: 1; text-align: center; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: bold; color: var(--text-gray); cursor: pointer; transition: all 0.2s; }
+        .tab.active { background-color: var(--white); color: var(--primary-green); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+
+        /* Tab Content Areas */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Form Styling */
+        .form-card { background: var(--white); border-radius: 24px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .form-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin: 0 0 20px 0; }
+        .input-group { background: var(--input-bg); border-radius: 12px; display: flex; align-items: center; padding: 14px 16px; margin-bottom: 12px; border: 1px solid transparent; transition: border 0.2s; }
+        .input-group:focus-within { border: 1px solid #D1D5DB; }
+        .input-group input, .input-group select, .input-group textarea { border: none; background: transparent; width: 100%; font-size: 15px; color: var(--text-dark); outline: none; font-weight: 600; }
+        .input-group input::placeholder, .input-group textarea::placeholder { color: var(--text-light-gray); font-weight: 500; }
+        .input-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .input-row .input-group { margin-bottom: 0; flex: 1; }
+        textarea { resize: none; height: 100px; line-height: 1.5; margin-top: 5px; }
+        .btn-submit {
+            width: 100%; background: #F3F4F6; color: #9CA3AF; border: none; padding: 16px; border-radius: 12px;
+            font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.2s; margin-top: 10px;
+        }
+        .btn-submit.active { background: var(--primary-green); color: white; box-shadow: 0 4px 15px rgba(62,142,126,0.3); }
+
+        /* Partner/Personal Cards */
+        .list-header { font-size: 14px; font-weight: bold; color: var(--text-gray); margin: 20px 0 15px 5px; }
+        .record-card { background: var(--white); border-radius: 24px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 16px; position: relative; }
+        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        
+        /* Personal Icon vs Partner Icon */
+        .avatar-box { width: 44px; height: 44px; border-radius: 14px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;}
+        .avatar-box.personal { background-color: #F9F5FF; }
+        .avatar-box.partner { background-color: #EFF6FF; }
+        
+        .card-info { margin-left: 12px; flex: 1; }
+        .card-name { font-size: 15px; font-weight: bold; color: var(--text-dark); }
+        .card-date { font-size: 13px; color: var(--text-light-gray); margin-top: 4px; font-weight: 600; }
+        
+        .crown-badge { display: flex; align-items: center; gap: 4px; color: var(--text-light-gray); font-size: 13px; font-weight: bold; }
+        .crown-badge.highlight { color: var(--purple-main); }
+        
+        /* Special Ribbon for Personal 2.0x */
+        .personal-ribbon { position: absolute; top: 0; right: 20px; background: var(--purple-main); color: white; padding: 6px 12px; border-radius: 0 0 12px 12px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; }
+
+        .tags { display: flex; gap: 8px; margin: 12px 0 15px 0; }
+        .tag { padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; }
+        .tag-duration { background: var(--purple-light); color: var(--purple-main); }
+        .tag-chakra { background: var(--gray-pill); color: var(--text-gray); }
+
+        .reflection-text { font-size: 15px; line-height: 1.6; color: var(--text-dark); font-style: italic; }
+
+        /* Progress Tab Specifics */
+        .progress-banner { background: #336B5E; color: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; }
+        .progress-banner h3 { margin: 0 0 8px 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .progress-banner p { margin: 0; font-size: 13px; color: #A7F3D0; }
+        
+        .stage-card { background: var(--white); border-radius: 20px; padding: 16px 20px; margin-bottom: 12px; display: flex; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.02); border: 1px solid transparent; }
+        .stage-card.unlocked { border: 1px solid #D1FAE5; background-color: var(--white); }
+        .stage-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--gray-pill); display: flex; justify-content: center; align-items: center; margin-right: 15px; }
+        .stage-card.unlocked .stage-icon { background: #D1FAE5; color: var(--primary-green); }
+        .stage-info { flex: 1; }
+        .stage-title { font-size: 15px; font-weight: bold; margin: 0 0 4px 0; color: var(--text-gray); }
+        .stage-card.unlocked .stage-title { color: var(--text-dark); }
+        .stage-desc { font-size: 12px; color: var(--text-light-gray); margin: 0; }
+        .stage-card.unlocked .stage-desc { color: var(--text-gray); }
+        .stage-status { font-size: 13px; font-weight: bold; color: var(--text-light-gray); }
+        .stage-card.unlocked .stage-status { color: var(--primary-green); }
+
+        .loading { text-align: center; color: var(--text-gray); padding: 40px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <div class="header">
+        <div class="header-left">
+            <div class="heart-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            </div>
+            <div class="header-text">
+                <h1>階段 4：身心舒坦</h1>
+                <p>目前禪定狀態</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <h2 class="points">12</h2>
+            <p class="subtitle">/ 33 能量累積</p>
+        </div>
+    </div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+
+    <div class="quote-card">
+        <div class="quote-text">「禪令忙碌的人找到寧靜，禪令痛苦的人解脫煩惱，禪令快樂的人獲得智慧，禪令不平凡的人，明瞭平凡的真諦。」</div>
+        <div class="quote-author">禪宗第 85 代宗師 悟覺妙天禪師</div>
+    </div>
+
+    <div class="tabs-wrapper">
+        <div class="tab active" onclick="switchTab('today')" id="btn-today">今日紀錄</div>
+        <div class="tab" onclick="switchTab('progress')" id="btn-progress">成長進度</div>
+        <div class="tab" onclick="switchTab('partner')" id="btn-partner">夥伴心得</div>
+    </div>
+
+    <div id="tab-today" class="tab-content active">
+        <div class="form-card">
+            <div class="form-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3E8E7E" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                紀錄您的禪定
+            </div>
+            
+            <div class="input-group">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" style="margin-right:10px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <input type="text" id="input-name" placeholder="我是誰？(姓名)" oninput="checkForm()">
+            </div>
+            
+            <div class="input-group">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2" style="margin-right:10px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <input type="date" id="input-date" style="color: #374151;" oninput="checkForm()">
+            </div>
+
+            <div class="input-row">
+                <div class="input-group">
+                    <input type="number" id="input-duration" placeholder="禪定多久？" oninput="checkForm()">
+                    <span style="color:#9CA3AF; font-size:13px; font-weight:bold; white-space:nowrap;">分鐘</span>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="input-chakra" placeholder="練習脈輪/方法" oninput="checkForm()">
+                </div>
+            </div>
+
+            <div class="input-group" style="align-items: flex-start;">
+                <textarea id="input-reflection" placeholder="寫下您的心得發現..." oninput="checkForm()"></textarea>
+            </div>
+
+            <button id="submit-btn" class="btn-submit" onclick="saveRecord()" disabled>送出禪定紀錄</button>
+        </div>
+
+        <div class="list-header" id="my-records-title" style="display:none;">您的禪定日誌</div>
+        <div id="my-records-container"></div>
+    </div>
+
+    <div id="tab-progress" class="tab-content">
+        <div class="progress-banner">
+            <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M8 21h8m-4-4v4m0-18v4m5 0h2a2 2 0 0 1 2 2v2a5 5 0 0 1-5 5h-1m-4-9H4a2 2 0 0 0-2 2v2a5 5 0 0 0 5 5h1"></path></svg> 禪定成長指南</h3>
+            <p><b>40+</b> 分鐘 <b>1.5x</b> | <b style="color:#E9D5FF;">60+</b> 分鐘 <b style="color:#E9D5FF;">2.0x</b> 加權。</p>
+        </div>
+
+        <div class="stage-card unlocked">
+            <div class="stage-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div>
+            <div class="stage-info">
+                <p class="stage-title">階段 1：靜心起步</p>
+                <p class="stage-desc" style="color:var(--primary-green); font-weight:bold; margin-bottom:2px;">「今日小歇」勳章</p>
+                <p class="stage-desc">養成每天給自己 10 分鐘的習慣</p>
+            </div>
+            <div class="stage-status">✓ 已解鎖</div>
+        </div>
+
+        <div class="stage-card unlocked">
+            <div class="stage-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="M8 17l4 4 4-4"></path></svg></div>
+            <div class="stage-info">
+                <p class="stage-title">階段 2：呼吸自在</p>
+                <p class="stage-desc" style="color:var(--primary-green); font-weight:bold; margin-bottom:2px;">「森林深呼吸」背景音</p>
+                <p class="stage-desc">感覺呼吸變順暢了，心不再那麼急促</p>
+            </div>
+            <div class="stage-status">✓ 已解鎖</div>
+        </div>
+        
+        <div class="stage-card unlocked">
+            <div class="stage-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg></div>
+            <div class="stage-info">
+                <p class="stage-title">階段 3：專注當下</p>
+                <p class="stage-desc" style="color:var(--primary-green); font-weight:bold; margin-bottom:2px;">「告別雜念」頭銜</p>
+                <p class="stage-desc">不再被手機通知牽著走，專注力提升</p>
+            </div>
+            <div class="stage-status">✓ 已解鎖</div>
+        </div>
+
+        <div class="stage-card unlocked">
+            <div class="stage-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></div>
+            <div class="stage-info">
+                <p class="stage-title">階段 4：身心舒坦</p>
+                <p class="stage-desc" style="color:var(--primary-green); font-weight:bold; margin-bottom:2px;">「深度放鬆」導引</p>
+                <p class="stage-desc">睡得更香，起床時感覺更有活力</p>
+            </div>
+            <div class="stage-status">✓ 已解鎖</div>
+        </div>
+
+        <div class="stage-card">
+            <div class="stage-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></div>
+            <div class="stage-info">
+                <p class="stage-title">階段 5：智慧湧現</p>
+                <p class="stage-desc" style="font-weight:bold; margin-bottom:2px;">「靈感湧泉」背景</p>
+                <p class="stage-desc">面對困難時，內心更能保持平穩</p>
+            </div>
+            <div class="stage-status">需累積 16 能量</div>
+        </div>
+    </div>
+
+    <div id="tab-partner" class="tab-content">
+        <div class="list-header">夥伴們的心得</div>
+        <div id="partner-records-container">
+            <div class="loading">正在從雲端讀取紀錄...</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // 您提供的 GAS URL
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbx6L86517PkUKKn3U1WfXTIt3D32VyR94nQ2_l-qC9Jc7W1jZleQ9gf7v_Rotvm-V3C/exec";
+    
+    let allRecords = [];
+
+    // 1. 初始化
+    window.onload = () => {
+        // 預設填入今天的日期
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('input-date').value = today;
+        
+        // 讀取 LocalStorage 記住的名字
+        const savedName = localStorage.getItem('zen_user_name');
+        if(savedName) document.getElementById('input-name').value = savedName;
+
+        fetchData();
+    };
+
+    // 2. 切換 Tab 邏輯
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById('btn-' + tabId).classList.add('active');
+        document.getElementById('tab-' + tabId).classList.add('active');
+    }
+
+    // 3. 表單驗證 (輸入中自動檢查按鈕狀態)
+    function checkForm() {
+        const name = document.getElementById('input-name').value.trim();
+        const date = document.getElementById('input-date').value;
+        const duration = document.getElementById('input-duration').value;
+        const chakra = document.getElementById('input-chakra').value.trim();
+        const reflection = document.getElementById('input-reflection').value.trim();
+        const btn = document.getElementById('submit-btn');
+
+        if(name && date && duration && chakra && reflection) {
+            btn.disabled = false;
+            btn.classList.add('active');
+            btn.innerText = "送出禪定紀錄";
+        } else {
+            btn.disabled = true;
+            btn.classList.remove('active');
+        }
+    }
+
+    // 4. 計算紀錄類型 (自動加權)
+    function calculateType(duration) {
+        if(duration >= 60) return "極致禪定 (2.0x)";
+        if(duration >= 40) return "深度禪定 (1.5x)";
+        return "一般禪定";
+    }
+
+    // 5. 儲存紀錄 (POST to GAS)
+    async function saveRecord() {
+        const btn = document.getElementById('submit-btn');
+        btn.innerText = "🚀 送出中...";
+        btn.classList.remove('active');
+        btn.disabled = true;
+
+        const name = document.getElementById('input-name').value.trim();
+        const duration = parseInt(document.getElementById('input-duration').value);
+        
+        // 記住使用者姓名
+        localStorage.setItem('zen_user_name', name);
+
+        const newRecord = {
+            name: name,
+            id: Date.now(),
+            date: document.getElementById('input-date').value,
+            duration: duration,
+            chakra: document.getElementById('input-chakra').value.trim(),
+            type: calculateType(duration), // 自動判斷
+            reflection: document.getElementById('input-reflection').value.trim()
+        };
+
+        try {
+            await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify(newRecord)
+            });
+            
+            // 清空部分表單
+            document.getElementById('input-duration').value = "";
+            document.getElementById('input-chakra').value = "";
+            document.getElementById('input-reflection').value = "";
+            checkForm();
+            
+            // 重新讀取資料
+            await fetchData();
+            alert("紀錄成功！能量已累積！");
+            
+        } catch(e) {
+            console.error(e);
+            alert("伺服器連線異常，請稍後再試。");
+            btn.innerText = "送出禪定紀錄";
+            btn.disabled = false;
+            btn.classList.add('active');
+        }
+    }
+
+    // 6. 讀取紀錄 (GET from GAS)
+    async function fetchData() {
+        try {
+            const response = await fetch(GAS_URL);
+            allRecords = await response.json();
+            
+            // 將資料依照日期反向排序 (新的在上面)
+            allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            renderPartnerRecords();
+            renderMyRecords();
+        } catch(e) {
+            document.getElementById('partner-records-container').innerHTML = `<div class="loading">讀取失敗，請確認網路連線。</div>`;
+        }
+    }
+
+    // 7. 渲染畫面 (夥伴心得 - 圖片 d948e1 風格)
+    function renderPartnerRecords() {
+        const container = document.getElementById('partner-records-container');
+        container.innerHTML = "";
+        
+        if(allRecords.length === 0) {
+            container.innerHTML = `<div class="loading">目前還沒有夥伴紀錄喔！</div>`;
+            return;
+        }
+
+        allRecords.forEach(rec => {
+            const isPurple = rec.type.includes('2.0x');
+            const crownClass = isPurple ? 'highlight' : '';
+            
+            container.innerHTML += `
+                <div class="record-card">
+                    <div class="card-top">
+                        <div style="display:flex;">
+                            <div class="avatar-box partner">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4A90E2" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            </div>
+                            <div class="card-info">
+                                <div class="card-name">${rec.name || '夥伴'}</div>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="crown-badge ${crownClass}">
+                                ${isPurple ? '♛' : ''} ${rec.date}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tags">
+                        <div class="tag tag-duration">${rec.duration} 分鐘</div>
+                        <div class="tag tag-chakra">${rec.chakra}</div>
+                    </div>
+                    <div class="reflection-text">"${rec.reflection}"</div>
+                </div>
+            `;
+        });
+    }
+
+    // 8. 渲染畫面 (我的日誌 - 圖片 d945bf 風格)
+    function renderMyRecords() {
+        const container = document.getElementById('my-records-container');
+        const title = document.getElementById('my-records-title');
+        const currentName = localStorage.getItem('zen_user_name');
+        
+        container.innerHTML = "";
+        
+        if(!currentName) {
+            title.style.display = 'none';
+            return;
+        }
+
+        // 過濾出自己的紀錄
+        const myData = allRecords.filter(r => r.name === currentName);
+        
+        if(myData.length > 0) {
+            title.style.display = 'block';
+        } else {
+            title.style.display = 'none';
+        }
+
+        myData.forEach(rec => {
+            const isPurple = rec.type.includes('2.0x');
+            
+            // 如果是 2.0x 加上右上角特殊標籤
+            const ribbon = isPurple ? `<div class="personal-ribbon">♛ ${rec.type}</div>` : '';
+
+            container.innerHTML += `
+                <div class="record-card" style="padding-top: ${isPurple ? '35px' : '20px'};">
+                    ${ribbon}
+                    <div class="card-top">
+                        <div style="display:flex;">
+                            <div class="avatar-box personal">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--purple-main)" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                            </div>
+                            <div class="card-info">
+                                <div class="card-name">${rec.date}</div>
+                                <div class="tags" style="margin: 6px 0 0 0;">
+                                    <div class="tag tag-duration">${rec.duration} 分鐘</div>
+                                    <div class="tag tag-chakra">${rec.chakra}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="reflection-text" style="margin-top:15px;">"${rec.reflection}"</div>
+                </div>
+            `;
+        });
+    }
+
+</script>
+</body>
+</html>
