@@ -365,14 +365,41 @@
     }
 
     function calculateStreak(dates) {
-        if(!dates.length) return 0;
-        let streak = 0, check = new Date();
-        check.setHours(0,0,0,0);
-        const set = new Set(dates);
-        if(!set.has(check.toISOString().split('T')[0])) check.setDate(check.getDate() - 1);
-        while(set.has(check.toISOString().split('T')[0])) { streak++; check.setDate(check.getDate() - 1); }
-        return streak;
+    if (!dates.length) return 0;
+
+    // 1. 取得「今天」的日期字串 (排除時間)
+    const now = new Date();
+    const todayStr = now.getFullYear() + '-' + 
+                     String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                     String(now.getDate()).padStart(2, '0');
+
+    // 2. 將所有日期轉化為統一格式的 Set，方便快速搜尋
+    const dateSet = new Set(dates.map(d => String(d).split('T')[0].trim()));
+
+    let streak = 0;
+    let checkDate = new Date(todayStr); // 從今天開始往回找
+
+    // 3. 檢查「今天」有沒有紀錄。
+    // 如果今天還沒練，就從「昨天」開始算連續天數（這符合一般習慣，避免今天一早看變 0）
+    if (!dateSet.has(todayStr)) {
+        checkDate.setDate(checkDate.getDate() - 1);
     }
+
+    // 4. 開始往回扣天數，只要 Set 裡面有日期，Streak 就加 1
+    while (true) {
+        let checkStr = checkDate.getFullYear() + '-' + 
+                       String(checkDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                       String(checkDate.getDate()).padStart(2, '0');
+        
+        if (dateSet.has(checkStr)) {
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+            break; // 中斷了就停止
+        }
+    }
+    return streak;
+}
 
     function switchTab(id) {
         document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
