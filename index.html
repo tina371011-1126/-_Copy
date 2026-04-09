@@ -203,7 +203,7 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycby2xc29wlqHzJVsN710LyxkDBvUK1d6Fxe9XO2hLs_mU00QBJyuZFTdI2JhzyBl-L_D/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzmd4Ud8GHWePKEKqveACY89_dLNxitP-ajUORNAG-HXw7jVyDhXlGo-h3r6dfQssJY/exec"; 
     let allRecords = [], currentUser = null, viewDate = new Date();
     let currentPage = 1;
     const itemsPerPage = 10;
@@ -429,34 +429,33 @@
     function logout() { localStorage.removeItem('zenUser'); location.reload(); }
     
     async function deleteRecord(date, duration) {
-    if (!confirm("確定要完全刪除這條紀錄嗎？")) return;
+    if (!confirm("確定要刪除這條紀錄嗎？")) return;
     
-    // 建立比對物件
-    const data = { 
-        action: 'delete', 
-        email: currentUser.email, 
-        date: date, 
-        duration: duration 
+    const data = {
+        action: 'delete',
+        email: currentUser.email,
+        date: date,
+        duration: duration
     };
 
     try {
         const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
         
         if (response.ok) {
-            // 重點：同步從本地 allRecords 中過濾掉該筆資料，不留痕跡
-            allRecords = allRecords.filter(r => 
-                !(r.email === currentUser.email && r.date === date && r.duration.toString() === duration.toString())
-            );
-            
-            // 重新渲染畫面
-            renderAll(); 
+            // 修改處：使用 filter 排除掉「Email、日期、時間」完全吻合的那一項
+            // 這樣不會影響到陣列中其他日期的資料
+            allRecords = allRecords.filter(r => {
+                const isMatch = r.email === currentUser.email && 
+                                r.date === date && 
+                                r.duration.toString() === duration.toString();
+                return !isMatch; // 留下來的是「不符合刪除條件」的資料
+            });
+
+            renderAll(); // 重新排序並渲染畫面
             alert("刪除成功！");
-        } else {
-            throw new Error("Server response not ok");
         }
     } catch (e) {
-        console.error(e);
-        alert("刪除失敗，請確認網路連線或稍後再試");
+        alert("刪除失敗，請檢查網路連線");
     }
 }
 
