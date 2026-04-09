@@ -217,13 +217,15 @@
 }
 
     async function fetchData() {
-        try {
-            const res = await fetch(GAS_URL);
-            const data = await res.json();
-            allRecords = data.sort((a, b) => new Date(b.date) - new Date(a.date));
-            renderAll();
-        } catch (e) { console.error("Fetch error", e); }
-    }
+    try {
+        const res = await fetch(GAS_URL);
+        const data = await res.json();
+        // 確保格式正確並排序
+        allRecords = data.map(r => ({...r, date: String(r.date).split('T')[0]}))
+                         .sort((a, b) => new Date(b.date) - new Date(a.date));
+        renderAll(); // 立即呈現自己的歷史紀錄與夥伴心得
+    } catch (e) { console.error("Fetch error", e); }
+}
     
     function renderAll() {
         renderCalendar();
@@ -258,19 +260,20 @@
     }
 
     async function deleteRecord(date, duration) {
-        if (!confirm(`確定要刪除 ${date} 的紀錄嗎？`)) return;
+    if (!confirm(`確定要刪除這筆紀錄嗎？`)) return;
 
-        // 樂觀更新：先從本地陣列移除，達成瞬發反應
-        allRecords = allRecords.filter(r => !(r.email === currentUser.email && r.date === date && String(r.duration) === String(duration)));
-        renderAll();
+    // 樂觀更新：畫面上先消失
+    allRecords = allRecords.filter(r => !(r.email === currentUser.email && r.date === date && String(r.duration) === String(duration)));
+    renderAll();
 
-        try {
-            await fetch(GAS_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ action: 'delete', email: currentUser.email, date: date, duration: duration }) 
-            });
-        } catch (e) { alert("刪除同步失敗，請重新整理"); fetchData(); }
-    }
+    try {
+        await fetch(GAS_URL, { 
+            method: 'POST', 
+            mode: 'no-cors',
+            body: JSON.stringify({ action: 'delete', email: currentUser.email, date: date, duration: duration }) 
+        });
+    } catch (e) { fetchData(); }
+}
 
     function renderPartnerRecords() {
         const nameKey = document.getElementById('search-name').value.toLowerCase();
@@ -331,28 +334,33 @@
     }
 
     async function saveRecord() {
-        const data = {
-            email: currentUser.email, name: currentUser.name,
-            date: document.getElementById('input-date').value,
-            duration: document.getElementById('input-duration').value,
-            chakra: document.getElementById('input-chakra').value,
-            reflection: document.getElementById('input-reflection').value.trim()
-        };
+    const data = {
+        email: currentUser.email, name: currentUser.name,
+        date: document.getElementById('input-date').value,
+        duration: document.getElementById('input-duration').value,
+        chakra: document.getElementById('input-chakra').value,
+        reflection: document.getElementById('input-reflection').value.trim()
+    };
 
-        // 樂觀更新：直接推入陣列並渲染，不等待 Fetch
-        allRecords.unshift(data);
-        allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
-        renderAll();
+    // --- 樂觀更新：立即顯示在畫面上 ---
+    allRecords.unshift(data); // 插到最前面
+    renderAll(); 
 
-        // 清空表單
-        document.getElementById('input-duration').value = '';
-        document.getElementById('input-reflection').value = '';
-        checkForm();
+    // 清空表單
+    document.getElementById('input-duration').value = '';
+    document.getElementById('input-reflection').value = '';
+    checkForm();
 
-        try {
-            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
-        } catch (e) { alert("儲存失敗，請檢查網路"); fetchData(); }
-    }
+    // --- 背景同步資料庫 ---
+    try {
+        await fetch(GAS_URL, { 
+            method: 'POST', 
+            mode: 'no-cors', // 重要：避免跨網域阻擋導致寫入失敗
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data) 
+        });
+    } catch (e) { console.error("同步失敗", e); }
+}
 
     function renderProgress() {
         const mine = allRecords.filter(r => r.email === currentUser.email);
@@ -408,20 +416,18 @@
     const savedUser = localStorage.getItem('zenUser');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
-        // 立即顯示主介面，減少白屏感
         document.getElementById('login-section').style.display = 'none';
         document.getElementById('main-content').style.display = 'block';
         document.getElementById('user-display-name').innerText = currentUser.name;
         
-        // 初始化日期並「立刻」抓取資料
-        const now = new Date();
-        document.getElementById('input-date').value = now.toISOString().split('T')[0];
+        // 立即抓取資料，確保 3 秒內出現歷史資料與心得
         fetchData(); 
     } else {
         document.getElementById('login-section').style.display = 'block';
         document.getElementById('main-content').style.display = 'none';
     }
 };
+    
 </script>
 </body>
 </html>
