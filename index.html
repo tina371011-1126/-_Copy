@@ -425,6 +425,13 @@
         currentUser = JSON.parse(localStorage.getItem('zenUser')); 
         if(currentUser) init(); 
     };
+    // 請在 script 標籤內加入此函式
+function renderAll() {
+    renderCalendar();
+    renderMyRecords();
+    renderPartnerRecords();
+    renderProgress();
+}
 </script>
 </body>
 </html>
