@@ -203,21 +203,18 @@
     }
 
     function init() {
-        if (!currentUser) {
-            document.getElementById('login-section').style.display = 'block';
-            document.getElementById('main-content').style.display = 'none';
-            return;
-        }
-        document.getElementById('login-section').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
-        document.getElementById('user-display-name').innerText = currentUser.name;
+    // 這裡只需處理 GIS 登入後的邏輯
+    if (!currentUser) return;
+    
+    document.getElementById('login-section').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+    document.getElementById('user-display-name').innerText = currentUser.name;
 
-        // 初始化日期為今天
-        const now = new Date();
-        document.getElementById('input-date').value = now.toISOString().split('T')[0];
+    const now = new Date();
+    document.getElementById('input-date').value = now.toISOString().split('T')[0];
 
-        fetchData();
-    }
+    fetchData(); // 確保 GIS 登入成功後也會抓資料
+}
 
     async function fetchData() {
         try {
@@ -408,16 +405,23 @@
     function logout() { localStorage.removeItem('zenUser'); location.reload(); }
 
     window.onload = () => { 
-        currentUser = JSON.parse(localStorage.getItem('zenUser')); 
-        if(currentUser) {
-            // 如果已登入，立即切換 UI 避免閃爍
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('main-content').style.display = 'block';
-            init(); 
-        } else {
-            document.getElementById('login-section').style.display = 'block';
-        }
-    };
+    const savedUser = localStorage.getItem('zenUser');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        // 立即顯示主介面，減少白屏感
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        document.getElementById('user-display-name').innerText = currentUser.name;
+        
+        // 初始化日期並「立刻」抓取資料
+        const now = new Date();
+        document.getElementById('input-date').value = now.toISOString().split('T')[0];
+        fetchData(); 
+    } else {
+        document.getElementById('login-section').style.display = 'block';
+        document.getElementById('main-content').style.display = 'none';
+    }
+};
 </script>
 </body>
 </html>
