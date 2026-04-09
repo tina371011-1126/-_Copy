@@ -265,20 +265,64 @@ function getDurTag(dur) {
 function renderMyRecords() {
     const container = document.getElementById('my-records-container');
     if(!container || !currentUser) return;
+    
+    // 確保只抓取自己的 email 紀錄
     const mine = allRecords.filter(r => r.email === currentUser.email);
+    
+    if (mine.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:gray;">尚無個人紀錄</p>';
+        return;
+    }
+
     container.innerHTML = mine.map(r => `
         <div class="record-card">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <b style="font-size:14px;">${r.date}</b>
+                <b style="font-size:14px;">${r.date || '無日期'}</b>
                 <div>
                     ${getDurTag(r.duration)}
                     <span style="cursor:pointer; margin-left:10px; color:#EF4444; font-size:12px;" 
                           onclick="deleteRecord('${r.date}', '${r.duration}')">🗑️ 刪除</span>
                 </div>
             </div>
-            <div class="reflection-text">${r.reflection}</div>
+            <div class="reflection-text">${r.reflection || '無心得內容'}</div>
         </div>
     `).join('');
+}
+
+function renderPartnerRecords() {
+    const container = document.getElementById('partner-records-container');
+    if(!container) return;
+
+    const nameKey = (document.getElementById('search-name')?.value || "").toLowerCase();
+    const chakraKey = document.getElementById('search-chakra')?.value || "";
+    
+    // 過濾邏輯：確保屬性存在再執行 toLowerCase
+    const filtered = allRecords.filter(r => {
+        const nameMatch = (r.name || "").toLowerCase().includes(nameKey);
+        const chakraMatch = (chakraKey === "" || (r.chakra || "").includes(chakraKey));
+        return nameMatch && chakraMatch;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:gray; padding:20px;">找不到符合的夥伴心得</p>';
+        return;
+    }
+
+    const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+    const start = (currentPage - 1) * itemsPerPage;
+    
+    container.innerHTML = filtered.slice(start, start + itemsPerPage).map(r => `
+        <div class="record-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <b style="color:var(--primary-green)">${r.name || '無名夥伴'}</b>
+                <span style="font-size:12px; color:var(--text-gray)">${r.date || ''}</span>
+            </div>
+            <div>${getDurTag(r.duration)} <span class="tag" style="background:var(--light-green-bg); color:var(--primary-green)">${r.chakra || '未選脈輪'}</span></div>
+            <div class="reflection-text">${r.reflection || '這筆紀錄沒有填寫心得內容。'}</div>
+        </div>
+    `).join('');
+
+    document.getElementById('page-info').innerText = `第 ${currentPage} / ${totalPages} 頁`;
 }
 
 async function deleteRecord(date, duration) {
@@ -393,36 +437,44 @@ function renderProgress() {
     if(!currentUser) return;
     const mine = allRecords.filter(r => r.email === currentUser.email);
     let energy = 0;
+    
     mine.forEach(r => {
         let d = parseInt(r.duration) || 0;
-        energy += (d>=60?d*2:d>=40?d*1.5:d);
+        // 依照分鐘數給予不同權重的能量點數
+        energy += (d >= 60 ? d * 2 : d >= 40 ? d * 1.5 : d);
     });
+
     const dates = [...new Set(mine.map(r => r.date))].sort();
     const streak = calculateStreak(dates);
     
-    const elements = {
+    // 更新介面數值
+    const updates = {
         'total-energy': Math.floor(energy),
         'header-points': Math.floor(energy),
         'total-sessions': mine.length,
         'current-streak': streak
     };
     
-    for (let id in elements) {
+    for (let id in updates) {
         const el = document.getElementById(id);
-        if(el) el.innerText = elements[id];
+        if(el) el.innerText = updates[id];
     }
 
+    // 進度條優化：以 3333 為滿等基準
     const fill = document.getElementById('header-progress-fill');
-    if(fill) fill.style.width = Math.min((energy/3333)*100, 100) + '%';
+    if(fill) fill.style.width = Math.min((energy / 3333) * 100, 100) + '%';
     
-    let lv = "Level 0：初入禪徑";
+    // 等級文字更新
+    let lv = "Level 0：初步練習";
     if(mine.length >= 100) lv = "Level 4：進階挑戰";
     else if(mine.length >= 70) lv = "Level 3：高度投入";
     else if(mine.length >= 50) lv = "Level 2：穩定練習";
     else if(mine.length >= 30) lv = "Level 1：建立習慣";
+    
     const lvText = document.getElementById('level-text');
     if(lvText) lvText.innerText = lv;
 
+    // 連續天數勳章
     [7, 21, 50, 100].forEach(num => {
         const b = document.getElementById(`badge-${num}`);
         if(b) b.classList.toggle('active', streak >= num);
