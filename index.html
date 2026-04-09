@@ -17,7 +17,9 @@
         body { background-color: var(--bg-color); margin: 0; display: flex; justify-content: center; color: var(--text-dark); }
         .app-container { width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; padding-bottom: 60px;}
         
-        /* Header */
+        /* UI 狀態切換 */
+        #main-content, #login-section { display: none; }
+
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .header-left { display: flex; align-items: center; gap: 12px; }
         .heart-icon { width: 48px; height: 48px; background-color: var(--primary-green); border-radius: 16px; display: flex; justify-content: center; align-items: center; font-size: 24px; }
@@ -28,24 +30,14 @@
         .progress-bar-bg { width: 100%; height: 6px; background-color: #E5E7EB; border-radius: 3px; margin-top: 15px; overflow: hidden; }
         .progress-bar-fill { width: 0%; height: 100%; background-color: var(--primary-green); transition: width 1s ease; }
 
-        /* 金句區塊樣式 */
         .quote-container {
-            background-color: var(--white);
-            border-radius: 20px;
-            padding: 20px;
-            margin: 10px 0 20px 0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
-            border: 1px solid rgba(62, 142, 126, 0.1);
+            background-color: var(--white); border-radius: 20px; padding: 20px; margin: 10px 0 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid rgba(62, 142, 126, 0.1);
         }
-        .quote-content {
-            color: #4B5563; font-size: 14px; line-height: 1.8; margin-bottom: 12px; font-weight: 500;
-        }
-        .quote-author {
-            color: var(--primary-green); font-size: 12px; text-align: right; font-weight: bold;
-        }
+        .quote-content { color: #4B5563; font-size: 14px; line-height: 1.8; margin-bottom: 12px; font-weight: 500; }
+        .quote-author { color: var(--primary-green); font-size: 12px; text-align: right; font-weight: bold; }
         .quote-author span { color: #374151; margin-right: 4px; }
 
-        /* Tabs */
         .tabs-wrapper { display: flex; background-color: var(--gray-pill); border-radius: 16px; padding: 4px; margin: 20px 0; }
         .tab { flex: 1; text-align: center; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: bold; color: var(--text-gray); cursor: pointer; }
         .tab.active { background-color: var(--white); color: var(--primary-green); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
@@ -54,7 +46,6 @@
 
         #login-section { text-align: center; padding: 60px 20px; background: white; border-radius: 24px; margin-top: 40px; }
 
-        /* Calendar */
         .calendar-container { background: var(--white); border-radius: 24px; padding: 20px; margin-bottom: 20px; }
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
@@ -65,7 +56,6 @@
         .calendar-date.rec-default::after { background: var(--primary-green); }
         .calendar-date.today { border: 1.5px solid var(--primary-green); }
 
-        /* Form */
         .form-card { background: var(--white); border-radius: 24px; padding: 24px; margin-bottom: 20px; }
         .input-group { background: var(--input-bg); border-radius: 12px; display: flex; align-items: center; padding: 14px 16px; margin-bottom: 12px; width: 100%; }
         .input-group input, .input-group select, .input-group textarea { border: none; background: transparent; width: 100%; font-size: 15px; outline: none; color: var(--text-dark); }
@@ -102,7 +92,7 @@
         <div class="g_id_signin" data-type="standard"></div>
     </div>
 
-    <div id="main-content" style="display: none;">
+    <div id="main-content">
         <div class="header">
             <div class="header-left">
                 <div class="heart-icon">🧘</div>
@@ -115,12 +105,8 @@
         <div class="progress-bar-bg"><div class="progress-bar-fill" id="header-progress-fill"></div></div>
 
         <div class="quote-container">
-            <div class="quote-content">
-                「禪令忙碌的人找到寧靜，禪令痛苦的人解脫煩惱，禪令快樂的人獲得智慧，禪令不平凡的人，明瞭平凡的真諦。」
-            </div>
-            <div class="quote-author">
-                —— <span>禪宗第 85 代宗師</span> 悟覺妙天禪師
-            </div>
+            <div class="quote-content">「禪令忙碌的人找到寧靜，禪令痛苦的人解脫煩惱，禪令快樂的人獲得智慧，禪令不平凡的人，明瞭平凡的真諦。」</div>
+            <div class="quote-author">—— <span>禪宗第 85 代宗師</span> 悟覺妙天禪師</div>
         </div>
 
         <div class="tabs-wrapper">
@@ -203,35 +189,32 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbw4Ij_zKkM6NCqybjRRN-DWwiv662WSATrGhe9BVp5S__cNFRx4eVX8m6h5XcG3zecB/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyKR2VtSzc266TKAb5X6a8OxCVdxuxCrD7_WzARV4q5TdLZW2DsQGl9FBtGNXjsY_2U/exec"; 
     let allRecords = [], currentUser = null, viewDate = new Date();
     let currentPage = 1;
     const itemsPerPage = 10;
 
+    // GIS 登入回傳
     function handleCredentialResponse(response) {
-        const base64Url = response.credential.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        const payload = JSON.parse(jsonPayload);
-        
+        const payload = JSON.parse(decodeURIComponent(escape(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))));
         currentUser = { email: payload.email, name: payload.name };
         localStorage.setItem('zenUser', JSON.stringify(currentUser));
         init();
     }
 
     function init() {
-        if (!currentUser) return;
+        if (!currentUser) {
+            document.getElementById('login-section').style.display = 'block';
+            document.getElementById('main-content').style.display = 'none';
+            return;
+        }
         document.getElementById('login-section').style.display = 'none';
         document.getElementById('main-content').style.display = 'block';
         document.getElementById('user-display-name').innerText = currentUser.name;
 
+        // 初始化日期為今天
         const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        document.getElementById('input-date').value = `${year}-${month}-${day}`;
+        document.getElementById('input-date').value = now.toISOString().split('T')[0];
 
         fetchData();
     }
@@ -240,17 +223,18 @@
         try {
             const res = await fetch(GAS_URL);
             const data = await res.json();
-            
-            // 1. 處理日期格式 2. 進行排序 (降序)
-            allRecords = data.map(r => ({...r, date: String(r.date).split('T')[0]}))
-                             .sort((a, b) => new Date(b.date) - new Date(a.date));
-            
+            allRecords = data.sort((a, b) => new Date(b.date) - new Date(a.date));
             renderAll();
-        } catch (e) { 
-            console.error("Fetch error", e); 
-        }
+        } catch (e) { console.error("Fetch error", e); }
     }
     
+    function renderAll() {
+        renderCalendar();
+        renderMyRecords();
+        renderPartnerRecords();
+        renderProgress();
+    }
+
     function getDurTag(dur) {
         const d = parseInt(dur);
         if(d >= 60) return `<span class="tag tag-duration purple">👑 ${d} min</span>`;
@@ -260,11 +244,9 @@
 
     function renderMyRecords() {
         const container = document.getElementById('my-records-container');
-        // 過濾出自己的紀錄（此時 allRecords 已是排序好的狀態）
         const mine = allRecords.filter(r => r.email === currentUser.email);
-        
         container.innerHTML = mine.map(r => `
-            <div class="record-card" style="position:relative;">
+            <div class="record-card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <b style="font-size:14px;">${r.date}</b>
                     <div>
@@ -278,33 +260,37 @@
         `).join('');
     }
 
+    async function deleteRecord(date, duration) {
+        if (!confirm(`確定要刪除 ${date} 的紀錄嗎？`)) return;
+
+        // 樂觀更新：先從本地陣列移除，達成瞬發反應
+        allRecords = allRecords.filter(r => !(r.email === currentUser.email && r.date === date && String(r.duration) === String(duration)));
+        renderAll();
+
+        try {
+            await fetch(GAS_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: 'delete', email: currentUser.email, date: date, duration: duration }) 
+            });
+        } catch (e) { alert("刪除同步失敗，請重新整理"); fetchData(); }
+    }
+
     function renderPartnerRecords() {
         const nameKey = document.getElementById('search-name').value.toLowerCase();
         const chakraKey = document.getElementById('search-chakra').value;
-        const container = document.getElementById('partner-records-container');
-        
-        const filtered = allRecords.filter(r => {
-            const matchName = r.name.toLowerCase().includes(nameKey);
-            const matchChakra = chakraKey === "" || r.chakra.includes(chakraKey);
-            return matchName && matchChakra;
-        });
+        const filtered = allRecords.filter(r => r.name.toLowerCase().includes(nameKey) && (chakraKey === "" || r.chakra.includes(chakraKey)));
 
         const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
         if(currentPage > totalPages) currentPage = totalPages;
-
         const start = (currentPage - 1) * itemsPerPage;
-        const paginated = filtered.slice(start, start + itemsPerPage);
-
-        container.innerHTML = paginated.map(r => `
+        
+        document.getElementById('partner-records-container').innerHTML = filtered.slice(start, start + itemsPerPage).map(r => `
             <div class="record-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                     <b style="color:var(--primary-green)">${r.name}</b>
                     <span style="font-size:12px; color:var(--text-gray)">${r.date}</span>
                 </div>
-                <div>
-                    ${getDurTag(r.duration)}
-                    <span class="tag" style="background:var(--light-green-bg); color:var(--primary-green)">${r.chakra}</span>
-                </div>
+                <div>${getDurTag(r.duration)} <span class="tag" style="background:var(--light-green-bg); color:var(--primary-green)">${r.chakra}</span></div>
                 <div class="reflection-text">${r.reflection}</div>
             </div>
         `).join('');
@@ -336,7 +322,7 @@
 
     function showDateRecord(date) {
         const rec = allRecords.find(r => r.email === currentUser.email && r.date === date);
-        alert(rec ? `【${date}】\n方法：${rec.chakra}\n時間：${rec.duration}分\n心得：${rec.reflection}` : `【${date}】\n本日無紀錄`);
+        alert(rec ? `【${date}】\n方法：${rec.chakra}\n時間：${rec.duration}分\n心得：${rec.reflection}` : `【${date}】\n無紀錄`);
     }
 
     function checkForm() {
@@ -348,8 +334,6 @@
     }
 
     async function saveRecord() {
-        const btn = document.getElementById('submit-btn');
-        btn.innerText = "傳送中..."; btn.disabled = true;
         const data = {
             email: currentUser.email, name: currentUser.name,
             date: document.getElementById('input-date').value,
@@ -357,24 +341,30 @@
             chakra: document.getElementById('input-chakra').value,
             reflection: document.getElementById('input-reflection').value.trim()
         };
-        await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
-        // 將新資料加入陣列
-        allRecords.push(data); 
-        
-        // 強制重新排序：日期從大到小 (最新在前)
+
+        // 樂觀更新：直接推入陣列並渲染，不等待 Fetch
+        allRecords.unshift(data);
         allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
-        
-        renderAll(); // 重新渲染畫面
+        renderAll();
+
+        // 清空表單
+        document.getElementById('input-duration').value = '';
+        document.getElementById('input-reflection').value = '';
+        checkForm();
+
+        try {
+            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
+        } catch (e) { alert("儲存失敗，請檢查網路"); fetchData(); }
     }
 
     function renderProgress() {
         const mine = allRecords.filter(r => r.email === currentUser.email);
         let energy = 0;
-        const dates = [...new Set(mine.map(r => r.date))].sort();
         mine.forEach(r => {
             let d = parseInt(r.duration);
             energy += (d>=60?d*2:d>=40?d*1.5:d);
         });
+        const dates = [...new Set(mine.map(r => r.date))].sort();
         const streak = calculateStreak(dates);
         document.getElementById('total-energy').innerText = Math.floor(energy);
         document.getElementById('header-points').innerText = Math.floor(energy);
@@ -397,15 +387,13 @@
 
     function calculateStreak(dates) {
         if (!dates.length) return 0;
-        const now = new Date();
-        const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        const dateSet = new Set(dates.map(d => String(d).split('T')[0].trim()));
-        let streak = 0, checkDate = new Date(todayStr);
-        if (!dateSet.has(todayStr)) checkDate.setDate(checkDate.getDate() - 1);
-        while (true) {
-            let checkStr = checkDate.getFullYear() + '-' + String(checkDate.getMonth() + 1).padStart(2, '0') + '-' + String(checkDate.getDate()).padStart(2, '0');
-            if (dateSet.has(checkStr)) { streak++; checkDate.setDate(checkDate.getDate() - 1); } 
-            else break;
+        const dateSet = new Set(dates);
+        let streak = 0, checkDate = new Date();
+        let checkStr = checkDate.toISOString().split('T')[0];
+        if (!dateSet.has(checkStr)) { checkDate.setDate(checkDate.getDate() - 1); checkStr = checkDate.toISOString().split('T')[0]; }
+        while (dateSet.has(checkStr)) {
+            streak++; checkDate.setDate(checkDate.getDate() - 1);
+            checkStr = checkDate.toISOString().split('T')[0];
         }
         return streak;
     }
@@ -418,20 +406,18 @@
 
     function changeMonth(s) { viewDate.setMonth(viewDate.getMonth()+s); renderCalendar(); }
     function logout() { localStorage.removeItem('zenUser'); location.reload(); }
-    
-   ㄒ
 
     window.onload = () => { 
         currentUser = JSON.parse(localStorage.getItem('zenUser')); 
-        if(currentUser) init(); 
+        if(currentUser) {
+            // 如果已登入，立即切換 UI 避免閃爍
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            init(); 
+        } else {
+            document.getElementById('login-section').style.display = 'block';
+        }
     };
-    // 請在 script 標籤內加入此函式
-function renderAll() {
-    renderCalendar();
-    renderMyRecords();
-    renderPartnerRecords();
-    renderProgress();
-}
 </script>
 </body>
 </html>
