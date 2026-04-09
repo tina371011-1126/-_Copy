@@ -189,7 +189,7 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyKR2VtSzc266TKAb5X6a8OxCVdxuxCrD7_WzARV4q5TdLZW2DsQGl9FBtGNXjsY_2U/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbylgmrDktw1X5h2d7gRiLZirQSDQLJF2N-WlsmB3eyEwAYsAqhQ9m0YF29T_ImGLDAT/exec"; 
     let allRecords = [], currentUser = null, viewDate = new Date();
     let currentPage = 1;
     const itemsPerPage = 10;
@@ -220,11 +220,18 @@
     try {
         const res = await fetch(GAS_URL);
         const data = await res.json();
-        // 確保格式正確並排序
-        allRecords = data.map(r => ({...r, date: String(r.date).split('T')[0]}))
-                         .sort((a, b) => new Date(b.date) - new Date(a.date));
-        renderAll(); // 立即呈現自己的歷史紀錄與夥伴心得
-    } catch (e) { console.error("Fetch error", e); }
+        
+        // 格式化日期並依日期由新到舊排序
+        allRecords = data.map(r => ({
+            ...r, 
+            date: String(r.date).includes('T') ? r.date.split('T')[0] : r.date
+        })).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // 立即渲染所有頁面內容（包括夥伴心得與進度）
+        renderAll(); 
+    } catch (e) { 
+        console.error("資料讀取失敗", e); 
+    }
 }
     
     function renderAll() {
@@ -334,13 +341,38 @@
     }
 
     async function saveRecord() {
+    const durInput = document.getElementById('input-duration').value;
+    const dateInput = document.getElementById('input-date').value;
+    const chakraInput = document.getElementById('input-chakra').value;
+    const reflectionInput = document.getElementById('input-reflection').value.trim();
+
     const data = {
         email: currentUser.email, name: currentUser.name,
-        date: document.getElementById('input-date').value,
-        duration: document.getElementById('input-duration').value,
-        chakra: document.getElementById('input-chakra').value,
-        reflection: document.getElementById('input-reflection').value.trim()
+        date: dateInput,
+        duration: durInput,
+        chakra: chakraInput,
+        reflection: reflectionInput
     };
+
+    // --- 關鍵：立即更新本地資料庫與 UI ---
+    allRecords.unshift(data); // 將新紀錄置頂
+    renderAll(); // 這會同步觸發 renderProgress()，讓點數與進度條秒變
+
+    // 清空並重置表單
+    document.getElementById('input-duration').value = '';
+    document.getElementById('input-reflection').value = '';
+    checkForm();
+
+    // 背景靜默上傳
+    try {
+        await fetch(GAS_URL, { 
+            method: 'POST', 
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data) 
+        });
+    } catch (e) { console.error("背景同步失敗", e); }
+};
 
     // --- 樂觀更新：立即顯示在畫面上 ---
     allRecords.unshift(data); // 插到最前面
@@ -416,11 +448,15 @@
     const savedUser = localStorage.getItem('zenUser');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
+        // 先顯示框架，避免白屏
         document.getElementById('login-section').style.display = 'none';
         document.getElementById('main-content').style.display = 'block';
         document.getElementById('user-display-name').innerText = currentUser.name;
         
-        // 立即抓取資料，確保 3 秒內出現歷史資料與心得
+        // 設定初始日期
+        document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+
+        // --- 關鍵：立即抓取所有人的紀錄 (包含夥伴與自己) ---
         fetchData(); 
     } else {
         document.getElementById('login-section').style.display = 'block';
