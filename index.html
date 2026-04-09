@@ -237,19 +237,25 @@
     }
 
     async function fetchData() {
-        try {
-            const res = await fetch(GAS_URL);
-            const data = await res.json();
-            
-            // 1. 處理日期格式 2. 進行排序 (降序)
-            allRecords = data.map(r => ({...r, date: String(r.date).split('T')[0]}))
-                             .sort((a, b) => new Date(b.date) - new Date(a.date));
-            
-            renderAll();
-        } catch (e) { 
-            console.error("Fetch error", e); 
-        }
+    try {
+        const res = await fetch(GAS_URL);
+        const data = await res.json();
+        
+        // 修正點：統一處理日期格式，移除時間干擾，並依日期最新到最遠排序
+        allRecords = data.map(r => {
+            let d = new Date(r.date);
+            // 補零確保格式為 YYYY-MM-DD
+            let formattedDate = d.getFullYear() + '-' + 
+                                String(d.getMonth() + 1).padStart(2, '0') + '-' + 
+                                String(d.getDate()).padStart(2, '0');
+            return { ...r, date: formattedDate };
+        }).sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        renderAll(); // 重新渲染月曆與列表
+    } catch (e) { 
+        console.error("資料載入失敗", e); 
     }
+}
 
     function renderAll() {
         renderMyRecords(); renderPartnerRecords(); renderCalendar(); renderProgress();
@@ -329,6 +335,11 @@
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month+1, 0).getDate();
         const mine = allRecords.filter(r => r.email === currentUser.email);
+        // 在 renderCalendar 的迴圈中，尋找比對紀錄的那一行
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+
+        // 確保這裡是精準比對字串
+        const hasRecord = allRecords.some(r => r.date === dateStr);
         for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
         for(let d=1; d<=daysInMonth; d++) {
             const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
