@@ -209,12 +209,22 @@ function init() {
     document.getElementById('user-display-name').innerText = currentUser.name;
     document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
 
-    // --- 關鍵修改：先從本地快取拿資料，達到 0.1 秒內渲染 ---
-    const cachedRecords = localStorage.getItem('zenRecords');
-    if (cachedRecords) {
-        allRecords = JSON.parse(cachedRecords);
-        renderAll(); 
+    // 安全讀取快取：避免 JSON 解析錯誤導致畫面崩潰（白屏）
+    try {
+        const cachedRecords = localStorage.getItem('zenRecords');
+        if (cachedRecords) {
+            allRecords = JSON.parse(cachedRecords);
+        } else {
+            allRecords = []; // 沒有快取時，確保是乾淨的空陣列
+        }
+    } catch (e) {
+        console.error("快取讀取失敗，已重置", e);
+        allRecords = []; 
     }
+
+    // --- 關鍵修正：無論有沒有快取，都「強制先渲染一次」 ---
+    // 這樣就算沒資料，也會在 0.1 秒內先畫出當月份的「空白月曆」跟「0 進度」，絕不白屏
+    renderAll(); 
 
     // 接著在背景偷偷跟 GAS 要最新資料（不阻礙使用者操作）
     fetchData(); 
@@ -232,14 +242,17 @@ async function fetchData() {
             date: String(r.date).split('T')[0]
         })).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        // --- 關鍵修改：將最新資料存入本地快取 ---
+        // 將最新資料存入本地快取
         localStorage.setItem('zenRecords', JSON.stringify(allRecords));
 
-        // 刷新畫面以顯示最新的「夥伴心得」或其他裝置同步的紀錄
+        // 資料回來後，重新渲染畫面（此時畫面會無縫填上最新打點紀錄）
         renderAll(); 
     } catch (e) { 
         console.error("背景同步失敗:", e);
-        // 即使失敗也不用呼叫 renderAll，因為 init() 已經用快取畫好畫面了
+        // 如果連線失敗，但畫面上連空架構都沒有，補一槍 renderAll 避免空白
+        if (!allRecords || allRecords.length === 0) {
+            renderAll();
+        }
     }
 }
 
