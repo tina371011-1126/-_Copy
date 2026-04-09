@@ -190,92 +190,82 @@
 
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbylgmrDktw1X5h2d7gRiLZirQSDQLJF2N-WlsmB3eyEwAYsAqhQ9m0YF29T_ImGLDAT/exec"; 
-    let allRecords = [], currentUser = null, viewDate = new Date();
-    let currentPage = 1;
-    const itemsPerPage = 10;
+let allRecords = [], currentUser = null, viewDate = new Date();
+let currentPage = 1;
+const itemsPerPage = 10;
 
-    // GIS 登入回傳
-    function handleCredentialResponse(response) {
-        const payload = JSON.parse(decodeURIComponent(escape(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))));
-        currentUser = { email: payload.email, name: payload.name };
-        localStorage.setItem('zenUser', JSON.stringify(currentUser));
-        init();
-    }
+// GIS 登入回傳
+function handleCredentialResponse(response) {
+    const payload = JSON.parse(decodeURIComponent(escape(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))));
+    currentUser = { email: payload.email, name: payload.name };
+    localStorage.setItem('zenUser', JSON.stringify(currentUser));
+    init();
+}
 
-    function init() {
-    // 這裡只需處理 GIS 登入後的邏輯
+function init() {
     if (!currentUser) return;
-    
     document.getElementById('login-section').style.display = 'none';
     document.getElementById('main-content').style.display = 'block';
     document.getElementById('user-display-name').innerText = currentUser.name;
-
-    const now = new Date();
-    document.getElementById('input-date').value = now.toISOString().split('T')[0];
-
-    fetchData(); // 確保 GIS 登入成功後也會抓資料
+    document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+    fetchData(); 
 }
 
-    async function fetchData() {
+async function fetchData() {
     try {
         const res = await fetch(GAS_URL);
         if (!res.ok) throw new Error('網路回應不正確');
         const data = await res.json();
-        
         allRecords = data.map(r => ({
             ...r, 
             date: String(r.date).split('T')[0]
         })).sort((a, b) => new Date(b.date) - new Date(a.date));
-
         renderAll(); 
     } catch (e) { 
         console.error("無法載入資料:", e);
-        // 就算失敗也要渲染一次，至少顯示空的列表而不是白屏
         renderAll();
     }
 }
-    
-    function renderAll() {
-    // 如果資料還沒回來或為空，先給一個空陣列避免報錯導致畫面卡死
-    if (!allRecords) allRecords = [];
 
-    renderHistory();   // 渲染個人紀錄
-    renderPartners();  // 渲染夥伴心得
-    renderProgress(); // 渲染成長進度
+// 修正重點：確保這裡呼叫的名稱與下方定義的函式完全一致
+function renderAll() {
+    if (!allRecords) allRecords = [];
+    renderMyRecords();      // 渲染個人紀錄清單
+    renderPartnerRecords(); // 渲染夥伴心得清單
+    renderProgress();       // 渲染成長進度與點數
+    renderCalendar();       // 渲染日曆打點
 }
 
-    function getDurTag(dur) {
-        const d = parseInt(dur);
-        if(d >= 60) return `<span class="tag tag-duration purple">👑 ${d} min</span>`;
-        if(d >= 40) return `<span class="tag tag-duration orange">⚡ ${d} min</span>`;
-        return `<span class="tag tag-duration default">${d} min</span>`;
-    }
+function getDurTag(dur) {
+    const d = parseInt(dur);
+    if(d >= 60) return `<span class="tag tag-duration purple">👑 ${d} min</span>`;
+    if(d >= 40) return `<span class="tag tag-duration orange">⚡ ${d} min</span>`;
+    return `<span class="tag tag-duration default">${d} min</span>`;
+}
 
-    function renderMyRecords() {
-        const container = document.getElementById('my-records-container');
-        const mine = allRecords.filter(r => r.email === currentUser.email);
-        container.innerHTML = mine.map(r => `
-            <div class="record-card">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <b style="font-size:14px;">${r.date}</b>
-                    <div>
-                        ${getDurTag(r.duration)}
-                        <span style="cursor:pointer; margin-left:10px; color:#EF4444; font-size:12px;" 
-                              onclick="deleteRecord('${r.date}', '${r.duration}')">🗑️ 刪除</span>
-                    </div>
+function renderMyRecords() {
+    const container = document.getElementById('my-records-container');
+    if(!container) return;
+    const mine = allRecords.filter(r => r.email === currentUser.email);
+    container.innerHTML = mine.map(r => `
+        <div class="record-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <b style="font-size:14px;">${r.date}</b>
+                <div>
+                    ${getDurTag(r.duration)}
+                    <span style="cursor:pointer; margin-left:10px; color:#EF4444; font-size:12px;" 
+                          onclick="deleteRecord('${r.date}', '${r.duration}')">🗑️ 刪除</span>
                 </div>
-                <div class="reflection-text">${r.reflection}</div>
             </div>
-        `).join('');
-    }
+            <div class="reflection-text">${r.reflection}</div>
+        </div>
+    `).join('');
+}
 
-    async function deleteRecord(date, duration) {
+async function deleteRecord(date, duration) {
     if (!confirm(`確定要刪除這筆紀錄嗎？`)) return;
-
-    // 樂觀更新：畫面上先消失
     allRecords = allRecords.filter(r => !(r.email === currentUser.email && r.date === date && String(r.duration) === String(duration)));
     renderAll();
-
     try {
         await fetch(GAS_URL, { 
             method: 'POST', 
@@ -285,65 +275,68 @@
     } catch (e) { fetchData(); }
 }
 
-    function renderPartnerRecords() {
-        const nameKey = document.getElementById('search-name').value.toLowerCase();
-        const chakraKey = document.getElementById('search-chakra').value;
-        const filtered = allRecords.filter(r => r.name.toLowerCase().includes(nameKey) && (chakraKey === "" || r.chakra.includes(chakraKey)));
+function renderPartnerRecords() {
+    const container = document.getElementById('partner-records-container');
+    if(!container) return;
+    const nameKey = document.getElementById('search-name').value.toLowerCase();
+    const chakraKey = document.getElementById('search-chakra').value;
+    const filtered = allRecords.filter(r => r.name.toLowerCase().includes(nameKey) && (chakraKey === "" || r.chakra.includes(chakraKey)));
 
-        const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-        if(currentPage > totalPages) currentPage = totalPages;
-        const start = (currentPage - 1) * itemsPerPage;
-        
-        document.getElementById('partner-records-container').innerHTML = filtered.slice(start, start + itemsPerPage).map(r => `
-            <div class="record-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                    <b style="color:var(--primary-green)">${r.name}</b>
-                    <span style="font-size:12px; color:var(--text-gray)">${r.date}</span>
-                </div>
-                <div>${getDurTag(r.duration)} <span class="tag" style="background:var(--light-green-bg); color:var(--primary-green)">${r.chakra}</span></div>
-                <div class="reflection-text">${r.reflection}</div>
+    const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+    if(currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * itemsPerPage;
+    
+    container.innerHTML = filtered.slice(start, start + itemsPerPage).map(r => `
+        <div class="record-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <b style="color:var(--primary-green)">${r.name}</b>
+                <span style="font-size:12px; color:var(--text-gray)">${r.date}</span>
             </div>
-        `).join('');
+            <div>${getDurTag(r.duration)} <span class="tag" style="background:var(--light-green-bg); color:var(--primary-green)">${r.chakra}</span></div>
+            <div class="reflection-text">${r.reflection}</div>
+        </div>
+    `).join('');
 
-        document.getElementById('page-info').innerText = `第 ${currentPage} / ${totalPages} 頁`;
-        document.getElementById('prev-page').disabled = (currentPage === 1);
-        document.getElementById('next-page').disabled = (currentPage === totalPages);
+    document.getElementById('page-info').innerText = `第 ${currentPage} / ${totalPages} 頁`;
+    document.getElementById('prev-page').disabled = (currentPage === 1);
+    document.getElementById('next-page').disabled = (currentPage === totalPages);
+}
+
+function changePage(step) { currentPage += step; renderPartnerRecords(); }
+function resetPage() { currentPage = 1; renderPartnerRecords(); }
+
+function renderCalendar() {
+    const grid = document.getElementById('calendar-grid');
+    if(!grid) return;
+    const year = viewDate.getFullYear(), month = viewDate.getMonth();
+    document.getElementById('calendar-month-label').innerText = `${year}年 ${month + 1}月`;
+    grid.innerHTML = "<div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>";
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const mine = allRecords.filter(r => r.email === currentUser.email);
+    for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
+    for(let d=1; d<=daysInMonth; d++) {
+        const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const rec = mine.find(r => r.date === dStr);
+        let cls = rec ? (parseInt(rec.duration)>=60?'has-record rec-purple':parseInt(rec.duration)>=40?'has-record rec-orange':'has-record rec-default') : '';
+        grid.innerHTML += `<div class="calendar-date ${cls}" onclick="showDateRecord('${dStr}')">${d}</div>`;
     }
+}
 
-    function changePage(step) { currentPage += step; renderPartnerRecords(); }
-    function resetPage() { currentPage = 1; renderPartnerRecords(); }
+function showDateRecord(date) {
+    const rec = allRecords.find(r => r.email === currentUser.email && r.date === date);
+    alert(rec ? `【${date}】\n方法：${rec.chakra}\n時間：${rec.duration}分\n心得：${rec.reflection}` : `【${date}】\n無紀錄`);
+}
 
-    function renderCalendar() {
-        const grid = document.getElementById('calendar-grid');
-        const year = viewDate.getFullYear(), month = viewDate.getMonth();
-        document.getElementById('calendar-month-label').innerText = `${year}年 ${month + 1}月`;
-        grid.innerHTML = "<div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>";
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month+1, 0).getDate();
-        const mine = allRecords.filter(r => r.email === currentUser.email);
-        for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
-        for(let d=1; d<=daysInMonth; d++) {
-            const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const rec = mine.find(r => r.date === dStr);
-            let cls = rec ? (parseInt(rec.duration)>=60?'rec-purple':parseInt(rec.duration)>=40?'rec-orange':'rec-default') : '';
-            grid.innerHTML += `<div class="calendar-date ${cls?'has-record '+cls:''}" onclick="showDateRecord('${dStr}')">${d}</div>`;
-        }
-    }
+function checkForm() {
+    const dur = parseInt(document.getElementById('input-duration').value) || 0;
+    const isReady = document.getElementById('input-date').value && dur > 0 && document.getElementById('input-chakra').value && document.getElementById('input-reflection').value.trim();
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = !isReady;
+    btn.className = 'btn-submit' + (isReady ? ' active' : '') + (dur>=60?' purple': dur>=40?' orange':'');
+}
 
-    function showDateRecord(date) {
-        const rec = allRecords.find(r => r.email === currentUser.email && r.date === date);
-        alert(rec ? `【${date}】\n方法：${rec.chakra}\n時間：${rec.duration}分\n心得：${rec.reflection}` : `【${date}】\n無紀錄`);
-    }
-
-    function checkForm() {
-        const dur = parseInt(document.getElementById('input-duration').value) || 0;
-        const isReady = document.getElementById('input-date').value && dur > 0 && document.getElementById('input-chakra').value && document.getElementById('input-reflection').value.trim();
-        const btn = document.getElementById('submit-btn');
-        btn.disabled = !isReady;
-        btn.className = 'btn-submit' + (isReady ? ' active' : '') + (dur>=60?' purple': dur>=40?' orange':'');
-    }
-
-    async function saveRecord() {
+async function saveRecord() {
     const durInput = document.getElementById('input-duration').value;
     const dateInput = document.getElementById('input-date').value;
     const chakraInput = document.getElementById('input-chakra').value;
@@ -351,119 +344,83 @@
 
     const data = {
         email: currentUser.email, name: currentUser.name,
-        date: dateInput,
-        duration: durInput,
-        chakra: chakraInput,
-        reflection: reflectionInput
+        date: dateInput, duration: durInput, chakra: chakraInput, reflection: reflectionInput
     };
 
-    // --- 關鍵：立即更新本地資料庫與 UI ---
-    allRecords.unshift(data); // 將新紀錄置頂
-    renderAll(); // 這會同步觸發 renderProgress()，讓點數與進度條秒變
+    allRecords.unshift(data); 
+    renderAll(); 
 
-    // 清空並重置表單
     document.getElementById('input-duration').value = '';
     document.getElementById('input-reflection').value = '';
     checkForm();
 
-    // 背景靜默上傳
     try {
         await fetch(GAS_URL, { 
             method: 'POST', 
             mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data) 
-        });
-    } catch (e) { console.error("背景同步失敗", e); }
-};
-
-    // --- 樂觀更新：立即顯示在畫面上 ---
-    allRecords.unshift(data); // 插到最前面
-    renderAll(); 
-
-    // 清空表單
-    document.getElementById('input-duration').value = '';
-    document.getElementById('input-reflection').value = '';
-    checkForm();
-
-    // --- 背景同步資料庫 ---
-    try {
-        await fetch(GAS_URL, { 
-            method: 'POST', 
-            mode: 'no-cors', // 重要：避免跨網域阻擋導致寫入失敗
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data) 
         });
     } catch (e) { console.error("同步失敗", e); }
 }
 
-    function renderProgress() {
-        const mine = allRecords.filter(r => r.email === currentUser.email);
-        let energy = 0;
-        mine.forEach(r => {
-            let d = parseInt(r.duration);
-            energy += (d>=60?d*2:d>=40?d*1.5:d);
-        });
-        const dates = [...new Set(mine.map(r => r.date))].sort();
-        const streak = calculateStreak(dates);
-        document.getElementById('total-energy').innerText = Math.floor(energy);
-        document.getElementById('header-points').innerText = Math.floor(energy);
-        document.getElementById('total-sessions').innerText = mine.length;
-        document.getElementById('current-streak').innerText = streak;
-        document.getElementById('header-progress-fill').style.width = Math.min((energy/3333)*100, 100) + '%';
-        
-        let lv = "Level 0：初入禪徑";
-        if(mine.length >= 100) lv = "Level 4：進階挑戰";
-        else if(mine.length >= 70) lv = "Level 3：高度投入";
-        else if(mine.length >= 50) lv = "Level 2：穩定練習";
-        else if(mine.length >= 30) lv = "Level 1：建立習慣";
-        document.getElementById('level-text').innerText = lv;
-
-        [7, 21, 50, 100].forEach(num => {
-            const b = document.getElementById(`badge-${num}`);
-            if(b) b.classList.toggle('active', streak >= num);
-        });
-    }
-
-    function calculateStreak(dates) {
-        if (!dates.length) return 0;
-        const dateSet = new Set(dates);
-        let streak = 0, checkDate = new Date();
-        let checkStr = checkDate.toISOString().split('T')[0];
-        if (!dateSet.has(checkStr)) { checkDate.setDate(checkDate.getDate() - 1); checkStr = checkDate.toISOString().split('T')[0]; }
-        while (dateSet.has(checkStr)) {
-            streak++; checkDate.setDate(checkDate.getDate() - 1);
-            checkStr = checkDate.toISOString().split('T')[0];
-        }
-        return streak;
-    }
-
-    function switchTab(id) {
-        document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
-        document.getElementById('btn-'+id).classList.add('active');
-        document.getElementById('tab-'+id).classList.add('active');
-    }
-
-    function changeMonth(s) { viewDate.setMonth(viewDate.getMonth()+s); renderCalendar(); }
-    function logout() { localStorage.removeItem('zenUser'); location.reload(); }
-
-    window.onload = () => { 
-    // 1. 先從本地取得用戶資訊
-    const savedUser = localStorage.getItem('zenUser');
+function renderProgress() {
+    const mine = allRecords.filter(r => r.email === currentUser.email);
+    let energy = 0;
+    mine.forEach(r => {
+        let d = parseInt(r.duration);
+        energy += (d>=60?d*2:d>=40?d*1.5:d);
+    });
+    const dates = [...new Set(mine.map(r => r.date))].sort();
+    const streak = calculateStreak(dates);
+    document.getElementById('total-energy').innerText = Math.floor(energy);
+    document.getElementById('header-points').innerText = Math.floor(energy);
+    document.getElementById('total-sessions').innerText = mine.length;
+    document.getElementById('current-streak').innerText = streak;
+    document.getElementById('header-progress-fill').style.width = Math.min((energy/3333)*100, 100) + '%';
     
+    let lv = "Level 0：初入禪徑";
+    if(mine.length >= 100) lv = "Level 4：進階挑戰";
+    else if(mine.length >= 70) lv = "Level 3：高度投入";
+    else if(mine.length >= 50) lv = "Level 2：穩定練習";
+    else if(mine.length >= 30) lv = "Level 1：建立習慣";
+    document.getElementById('level-text').innerText = lv;
+
+    [7, 21, 50, 100].forEach(num => {
+        const b = document.getElementById(`badge-${num}`);
+        if(b) b.classList.toggle('active', streak >= num);
+    });
+}
+
+function calculateStreak(dates) {
+    if (!dates.length) return 0;
+    const dateSet = new Set(dates);
+    let streak = 0, checkDate = new Date();
+    let checkStr = checkDate.toISOString().split('T')[0];
+    if (!dateSet.has(checkStr)) { checkDate.setDate(checkDate.getDate() - 1); checkStr = checkDate.toISOString().split('T')[0]; }
+    while (dateSet.has(checkStr)) {
+        streak++; checkDate.setDate(checkDate.getDate() - 1);
+        checkStr = checkDate.toISOString().split('T')[0];
+    }
+    return streak;
+}
+
+function switchTab(id) {
+    document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
+    document.getElementById('btn-'+id).classList.add('active');
+    document.getElementById('tab-'+id).classList.add('active');
+}
+
+function changeMonth(s) { viewDate.setMonth(viewDate.getMonth()+s); renderCalendar(); }
+function logout() { localStorage.removeItem('zenUser'); location.reload(); }
+
+window.onload = () => { 
+    const savedUser = localStorage.getItem('zenUser');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
-        
-        // 2. 立即顯示主畫面，這步最重要，確保「跑出畫面」
         document.getElementById('login-section').style.display = 'none';
         document.getElementById('main-content').style.display = 'block';
         document.getElementById('user-display-name').innerText = currentUser.name;
-        
-        // 3. 設定預設日期
-        const now = new Date();
-        document.getElementById('input-date').value = now.toISOString().split('T')[0];
-
-        // 4. 最後才去抓資料，失敗也不會影響畫面顯示
+        document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
         fetchData(); 
     } else {
         document.getElementById('login-section').style.display = 'block';
