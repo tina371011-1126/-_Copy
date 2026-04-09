@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>✨台科領禪定日誌✨</title>
+    <title>禪定日誌與進度</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -96,7 +96,7 @@
 
 <div class="app-container">
     <div id="login-section">
-        <h2>✨ 台科領禪定日誌</h2>
+        <h2>✨ 禪定日誌</h2>
         <p>登入 Google 帳號開啟紀錄</p>
         <div id="g_id_onload" data-client_id="898764620568-6h1uavirukt1k1vpfpvmfdbge74823vm.apps.googleusercontent.com" data-callback="handleCredentialResponse"></div>
         <div class="g_id_signin" data-type="standard"></div>
@@ -203,7 +203,7 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbz8Nx2m4SGm41U-PqT8xEaqzayW_ZO_MBesWinIam6JPhbdTdj58ACV25iGI3IAAe4z/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbw4Ij_zKkM6NCqybjRRN-DWwiv662WSATrGhe9BVp5S__cNFRx4eVX8m6h5XcG3zecB/exec"; 
     let allRecords = [], currentUser = null, viewDate = new Date();
     let currentPage = 1;
     const itemsPerPage = 10;
@@ -241,29 +241,16 @@
             const res = await fetch(GAS_URL);
             const data = await res.json();
             
-            if (!Array.isArray(data)) {
-                allRecords = [];
-            } else {
-                allRecords = data.map(r => {
-                    // 確保日期是 YYYY-MM-DD 格式
-                    let datePart = r.date;
-                    if (datePart && datePart.includes('T')) {
-                        datePart = datePart.split('T')[0];
-                    }
-                    return { ...r, date: datePart };
-                }).sort((a, b) => new Date(b.date) - new Date(a.date));
-            }
+            // 1. 處理日期格式 2. 進行排序 (降序)
+            allRecords = data.map(r => ({...r, date: String(r.date).split('T')[0]}))
+                             .sort((a, b) => new Date(b.date) - new Date(a.date));
             
-            renderAll(); 
+            renderAll();
         } catch (e) { 
-            console.error("資料載入失敗", e); 
+            console.error("Fetch error", e); 
         }
     }
-
-    function renderAll() {
-        renderMyRecords(); renderPartnerRecords(); renderCalendar(); renderProgress();
-    }
-
+    
     function getDurTag(dur) {
         const d = parseInt(dur);
         if(d >= 60) return `<span class="tag tag-duration purple">👑 ${d} min</span>`;
@@ -331,26 +318,21 @@
     function resetPage() { currentPage = 1; renderPartnerRecords(); }
 
     function renderCalendar() {
-    const grid = document.getElementById('calendar-grid');
-    const year = viewDate.getFullYear(), month = viewDate.getMonth();
-    document.getElementById('calendar-month-label').innerText = `${year}年 ${month + 1}月`;
-    grid.innerHTML = "<div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>";
-    
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const mine = allRecords.filter(r => r.email === currentUser.email);
-
-    for (let i = 0; i < firstDay; i++) grid.innerHTML += '<div></div>';
-    
-    for (let d = 1; d <= daysInMonth; d++) {
-        const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const rec = mine.find(r => r.date === dStr);
-        let cls = rec ? (parseInt(rec.duration) >= 60 ? 'rec-purple' : parseInt(rec.duration) >= 40 ? 'rec-orange' : 'rec-default') : '';
-        
-        const isToday = new Date().toDateString() === new Date(year, month, d).toDateString();
-        grid.innerHTML += `<div class="calendar-date ${cls ? 'has-record ' + cls : ''} ${isToday ? 'today' : ''}" onclick="showDateRecord('${dStr}')">${d}</div>`;
+        const grid = document.getElementById('calendar-grid');
+        const year = viewDate.getFullYear(), month = viewDate.getMonth();
+        document.getElementById('calendar-month-label').innerText = `${year}年 ${month + 1}月`;
+        grid.innerHTML = "<div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>";
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month+1, 0).getDate();
+        const mine = allRecords.filter(r => r.email === currentUser.email);
+        for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
+        for(let d=1; d<=daysInMonth; d++) {
+            const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const rec = mine.find(r => r.date === dStr);
+            let cls = rec ? (parseInt(rec.duration)>=60?'rec-purple':parseInt(rec.duration)>=40?'rec-orange':'rec-default') : '';
+            grid.innerHTML += `<div class="calendar-date ${cls?'has-record '+cls:''}" onclick="showDateRecord('${dStr}')">${d}</div>`;
+        }
     }
-}
 
     function showDateRecord(date) {
         const rec = allRecords.find(r => r.email === currentUser.email && r.date === date);
@@ -368,43 +350,23 @@
     async function saveRecord() {
         const btn = document.getElementById('submit-btn');
         btn.innerText = "傳送中..."; btn.disabled = true;
-        
-        const dateVal = document.getElementById('input-date').value;
-        const durVal = document.getElementById('input-duration').value;
-        const chakraVal = document.getElementById('input-chakra').value;
-        const reflectionVal = document.getElementById('input-reflection').value.trim();
-
         const data = {
-            action: 'add', // 確保加上 action 讓 GAS 判斷
-            email: currentUser.email, 
-            name: currentUser.name,
-            date: dateVal,
-            duration: durVal,
-            chakra: chakraVal,
-            reflection: reflectionVal
+            email: currentUser.email, name: currentUser.name,
+            date: document.getElementById('input-date').value,
+            duration: document.getElementById('input-duration').value,
+            chakra: document.getElementById('input-chakra').value,
+            reflection: document.getElementById('input-reflection').value.trim()
         };
-
-        try {
-            const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
-            if (response.ok) {
-                // 將新資料格式化後加入陣列
-                allRecords.push({ ...data }); 
-                allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
-                
-                renderAll();
-                alert("儲存成功！");
-                
-                // 清空輸入框
-                document.getElementById("input-duration").value = "";
-                document.getElementById("input-reflection").value = "";
-                checkForm();
-            }
-        } catch (e) {
-            alert("儲存失敗，請檢查網路");
-        } finally {
-            btn.innerText = "送出禪定紀錄";
-        }
+        await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
+        // 將新資料加入陣列
+        allRecords.push(data); 
+        
+        // 強制重新排序：日期從大到小 (最新在前)
+        allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        renderAll(); // 重新渲染畫面
     }
+
     function renderProgress() {
         const mine = allRecords.filter(r => r.email === currentUser.email);
         let energy = 0;
@@ -420,7 +382,7 @@
         document.getElementById('current-streak').innerText = streak;
         document.getElementById('header-progress-fill').style.width = Math.min((energy/3333)*100, 100) + '%';
         
-        let lv = "Level 0：初步練習";
+        let lv = "Level 0：初入禪徑";
         if(mine.length >= 100) lv = "Level 4：進階挑戰";
         else if(mine.length >= 70) lv = "Level 3：高度投入";
         else if(mine.length >= 50) lv = "Level 2：穩定練習";
@@ -457,36 +419,7 @@
     function changeMonth(s) { viewDate.setMonth(viewDate.getMonth()+s); renderCalendar(); }
     function logout() { localStorage.removeItem('zenUser'); location.reload(); }
     
-    async function deleteRecord(date, duration) {
-    if (!confirm("確定要刪除這條紀錄嗎？")) return;
-    
-    const data = {
-        action: 'delete',
-        email: currentUser.email,
-        date: date,
-        duration: duration
-    };
-
-    try {
-        const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
-        
-        if (response.ok) {
-            // 修改處：使用 filter 排除掉「Email、日期、時間」完全吻合的那一項
-            // 這樣不會影響到陣列中其他日期的資料
-            allRecords = allRecords.filter(r => {
-                const isMatch = r.email === currentUser.email && 
-                                r.date === date && 
-                                r.duration.toString() === duration.toString();
-                return !isMatch; // 留下來的是「不符合刪除條件」的資料
-            });
-
-            renderAll(); // 重新排序並渲染畫面
-            alert("刪除成功！");
-        }
-    } catch (e) {
-        alert("刪除失敗，請檢查網路連線");
-    }
-}
+   ㄒ
 
     window.onload = () => { 
         currentUser = JSON.parse(localStorage.getItem('zenUser')); 
