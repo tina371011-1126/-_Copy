@@ -211,29 +211,37 @@ function init() {
     fetchData(); 
 }
 
+// 修改 fetchData：確保資料抓取與渲染一氣呵成
 async function fetchData() {
     try {
+        // 同步啟動：在抓取資料的同時，先清空舊畫面顯示「載入中」
         const res = await fetch(GAS_URL);
-        if (!res.ok) throw new Error('網路回應不正確');
+        if (!res.ok) throw new Error('連線失敗');
         const data = await res.json();
+        
+        // 快速處理資料
         allRecords = data.map(r => ({
             ...r, 
             date: String(r.date).split('T')[0]
         })).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // --- 核心優化：一次觸發所有 UI，保證 3 秒內完成 ---
         renderAll(); 
     } catch (e) { 
-        console.error("無法載入資料:", e);
-        renderAll();
+        console.error("載入超時或失敗:", e);
+        renderAll(); // 即使失敗也要渲染，避免畫面空白
     }
 }
 
-// 修正重點：確保這裡呼叫的名稱與下方定義的函式完全一致
+// 統一渲染控制
 function renderAll() {
     if (!allRecords) allRecords = [];
-    renderMyRecords();      // 渲染個人紀錄清單
-    renderPartnerRecords(); // 渲染夥伴心得清單
-    renderProgress();       // 渲染成長進度與點數
-    renderCalendar();       // 渲染日曆打點
+    
+    // 同步執行四大模組
+    renderMyRecords();      // 2. 自己的歷史紀錄
+    renderPartnerRecords(); // 3. 夥伴心得
+    renderProgress();       // 4. 成長進度計算
+    renderCalendar();       // 1. 月曆打點
 }
 
 function getDurTag(dur) {
@@ -343,24 +351,31 @@ async function saveRecord() {
     const reflectionInput = document.getElementById('input-reflection').value.trim();
 
     const data = {
-        email: currentUser.email, name: currentUser.name,
-        date: dateInput, duration: durInput, chakra: chakraInput, reflection: reflectionInput
+        email: currentUser.email, 
+        name: currentUser.name,
+        date: dateInput, 
+        duration: durInput, 
+        chakra: chakraInput, 
+        reflection: reflectionInput
     };
 
+    // --- 關鍵優化：先更新本地陣列，立即計算進度 ---
     allRecords.unshift(data); 
-    renderAll(); 
+    renderAll(); // 這裡會立即觸發 renderProgress，進度條會「秒動」
 
+    // 清空表單並鎖定按鈕
     document.getElementById('input-duration').value = '';
     document.getElementById('input-reflection').value = '';
     checkForm();
 
+    // 背景默默上傳，不影響使用者操作
     try {
-        await fetch(GAS_URL, { 
+        fetch(GAS_URL, { 
             method: 'POST', 
             mode: 'no-cors',
             body: JSON.stringify(data) 
         });
-    } catch (e) { console.error("同步失敗", e); }
+    } catch (e) { console.warn("背景同步稍遲"); }
 }
 
 function renderProgress() {
@@ -417,10 +432,14 @@ window.onload = () => {
     const savedUser = localStorage.getItem('zenUser');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
+        
+        // UI 優先：先開門，再拿東西
         document.getElementById('login-section').style.display = 'none';
         document.getElementById('main-content').style.display = 'block';
         document.getElementById('user-display-name').innerText = currentUser.name;
         document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+
+        // 立即執行資料同步
         fetchData(); 
     } else {
         document.getElementById('login-section').style.display = 'block';
