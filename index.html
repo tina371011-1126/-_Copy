@@ -199,7 +199,7 @@ function handleCredentialResponse(response) {
     const payload = JSON.parse(decodeURIComponent(escape(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))));
     currentUser = { email: payload.email, name: payload.name };
     localStorage.setItem('zenUser', JSON.stringify(currentUser));
-    init();
+    ();
 }
 
 function init() {
@@ -208,28 +208,38 @@ function init() {
     document.getElementById('main-content').style.display = 'block';
     document.getElementById('user-display-name').innerText = currentUser.name;
     document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+
+    // --- 關鍵修改：先從本地快取拿資料，達到 0.1 秒內渲染 ---
+    const cachedRecords = localStorage.getItem('zenRecords');
+    if (cachedRecords) {
+        allRecords = JSON.parse(cachedRecords);
+        renderAll(); 
+    }
+
+    // 接著在背景偷偷跟 GAS 要最新資料（不阻礙使用者操作）
     fetchData(); 
 }
 
 // 修改 fetchData：確保資料抓取與渲染一氣呵成
 async function fetchData() {
     try {
-        // 同步啟動：在抓取資料的同時，先清空舊畫面顯示「載入中」
         const res = await fetch(GAS_URL);
         if (!res.ok) throw new Error('連線失敗');
         const data = await res.json();
         
-        // 快速處理資料
         allRecords = data.map(r => ({
             ...r, 
             date: String(r.date).split('T')[0]
         })).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        // --- 核心優化：一次觸發所有 UI，保證 3 秒內完成 ---
+        // --- 關鍵修改：將最新資料存入本地快取 ---
+        localStorage.setItem('zenRecords', JSON.stringify(allRecords));
+
+        // 刷新畫面以顯示最新的「夥伴心得」或其他裝置同步的紀錄
         renderAll(); 
     } catch (e) { 
-        console.error("載入超時或失敗:", e);
-        renderAll(); // 即使失敗也要渲染，避免畫面空白
+        console.error("背景同步失敗:", e);
+        // 即使失敗也不用呼叫 renderAll，因為 init() 已經用快取畫好畫面了
     }
 }
 
@@ -273,6 +283,8 @@ function renderMyRecords() {
 async function deleteRecord(date, duration) {
     if (!confirm(`確定要刪除這筆紀錄嗎？`)) return;
     allRecords = allRecords.filter(r => !(r.email === currentUser.email && r.date === date && String(r.duration) === String(duration)));
+    
+    localStorage.setItem('zenRecords', JSON.stringify(allRecords)); // 新增這行：更新快取
     renderAll();
     try {
         await fetch(GAS_URL, { 
@@ -361,7 +373,8 @@ async function saveRecord() {
 
     // --- 關鍵優化：先更新本地陣列，立即計算進度 ---
     allRecords.unshift(data); 
-    renderAll(); // 這裡會立即觸發 renderProgress，進度條會「秒動」
+    localStorage.setItem('zenRecords', JSON.stringify(allRecords)); // 新增這行：更新快取
+    renderAll(); // 進度條秒動
 
     // 清空表單並鎖定按鈕
     document.getElementById('input-duration').value = '';
