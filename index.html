@@ -237,25 +237,28 @@
     }
 
     async function fetchData() {
-    try {
-        const res = await fetch(GAS_URL);
-        const data = await res.json();
-        
-        // 修正點：統一處理日期格式，移除時間干擾，並依日期最新到最遠排序
-        allRecords = data.map(r => {
-            let d = new Date(r.date);
-            // 補零確保格式為 YYYY-MM-DD
-            let formattedDate = d.getFullYear() + '-' + 
-                                String(d.getMonth() + 1).padStart(2, '0') + '-' + 
-                                String(d.getDate()).padStart(2, '0');
-            return { ...r, date: formattedDate };
-        }).sort((a, b) => new Date(b.date) - new Date(a.date));
-        
-        renderAll(); // 重新渲染月曆與列表
-    } catch (e) { 
-        console.error("資料載入失敗", e); 
+        try {
+            const res = await fetch(GAS_URL);
+            const data = await res.json();
+            
+            if (!Array.isArray(data)) {
+                allRecords = [];
+            } else {
+                allRecords = data.map(r => {
+                    // 確保日期是 YYYY-MM-DD 格式
+                    let datePart = r.date;
+                    if (datePart && datePart.includes('T')) {
+                        datePart = datePart.split('T')[0];
+                    }
+                    return { ...r, date: datePart };
+                }).sort((a, b) => new Date(b.date) - new Date(a.date));
+            }
+            
+            renderAll(); 
+        } catch (e) { 
+            console.error("資料載入失敗", e); 
+        }
     }
-}
 
     function renderAll() {
         renderMyRecords(); renderPartnerRecords(); renderCalendar(); renderProgress();
@@ -331,21 +334,36 @@
         const grid = document.getElementById('calendar-grid');
         const year = viewDate.getFullYear(), month = viewDate.getMonth();
         document.getElementById('calendar-month-label').innerText = `${year}年 ${month + 1}月`;
+        
         grid.innerHTML = "<div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>";
+        
         const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month+1, 0).getDate();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
         const mine = allRecords.filter(r => r.email === currentUser.email);
-        // 在 renderCalendar 的迴圈中，尋找比對紀錄的那一行
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
 
-        // 確保這裡是精準比對字串
-        const hasRecord = allRecords.some(r => r.date === dateStr);
-        for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
-        for(let d=1; d<=daysInMonth; d++) {
-            const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        // 1. 填充空白日期
+        for(let i = 0; i < firstDay; i++) grid.innerHTML += '<div></div>';
+        
+        // 2. 填充日期與比對紀錄
+        for(let d = 1; d <= daysInMonth; d++) {
+            // 補零確保格式為 YYYY-MM-DD，用於比對 allRecords 內的 date 字串
+            const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            
+            // 尋找當天是否有紀錄
             const rec = mine.find(r => r.date === dStr);
-            let cls = rec ? (parseInt(rec.duration)>=60?'rec-purple':parseInt(rec.duration)>=40?'rec-orange':'rec-default') : '';
-            grid.innerHTML += `<div class="calendar-date ${cls?'has-record '+cls:''}" onclick="showDateRecord('${dStr}')">${d}</div>`;
+            
+            // 根據分鐘數決定圓點顏色
+            let cls = "";
+            if (rec) {
+                const dur = parseInt(rec.duration);
+                cls = "has-record " + (dur >= 60 ? 'rec-purple' : dur >= 40 ? 'rec-orange' : 'rec-default');
+            }
+
+            // 檢查是否為今天
+            const today = new Date();
+            const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
+            
+            grid.innerHTML += `<div class="calendar-date ${cls} ${isToday ? 'today' : ''}" onclick="showDateRecord('${dStr}')">${d}</div>`;
         }
     }
 
@@ -365,28 +383,43 @@
     async function saveRecord() {
         const btn = document.getElementById('submit-btn');
         btn.innerText = "傳送中..."; btn.disabled = true;
-        const data = {
-            email: currentUser.email, name: currentUser.name,
-            date: document.getElementById('input-date').value,
-            duration: document.getElementById('input-duration').value,
-            chakra: document.getElementById('input-chakra').value,
-            reflection: document.getElementById('input-reflection').value.trim()
-        };
-        await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
-        // 將新資料加入陣列
-        allRecords.push(data); 
         
-        // 強制重新排序：日期從大到小 (最新在前)
-        allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
-        
-        renderAll(); // 重新渲染畫面 
-        renderAll();
-        alert("儲存成功！");
-        btn.innerText = "送出禪定紀錄";
-        ["input-duration", "input-reflection"].forEach(id => document.getElementById(id).value = "");
-        checkForm();
-    }
+        const dateVal = document.getElementById('input-date').value;
+        const durVal = document.getElementById('input-duration').value;
+        const chakraVal = document.getElementById('input-chakra').value;
+        const reflectionVal = document.getElementById('input-reflection').value.trim();
 
+        const data = {
+            action: 'add', // 確保加上 action 讓 GAS 判斷
+            email: currentUser.email, 
+            name: currentUser.name,
+            date: dateVal,
+            duration: durVal,
+            chakra: chakraVal,
+            reflection: reflectionVal
+        };
+
+        try {
+            const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
+            if (response.ok) {
+                // 將新資料格式化後加入陣列
+                allRecords.push({ ...data }); 
+                allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                renderAll();
+                alert("儲存成功！");
+                
+                // 清空輸入框
+                document.getElementById("input-duration").value = "";
+                document.getElementById("input-reflection").value = "";
+                checkForm();
+            }
+        } catch (e) {
+            alert("儲存失敗，請檢查網路");
+        } finally {
+            btn.innerText = "送出禪定紀錄";
+        }
+    }
     function renderProgress() {
         const mine = allRecords.filter(r => r.email === currentUser.email);
         let energy = 0;
