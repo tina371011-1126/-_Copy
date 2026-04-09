@@ -189,12 +189,12 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbylgmrDktw1X5h2d7gRiLZirQSDQLJF2N-WlsmB3eyEwAYsAqhQ9m0YF29T_ImGLDAT/exec"; 
+   const GAS_URL = "https://script.google.com/macros/s/AKfycbylgmrDktw1X5h2d7gRiLZirQSDQLJF2N-WlsmB3eyEwAYsAqhQ9m0YF29T_ImGLDAT/exec"; 
 let allRecords = [], currentUser = null, viewDate = new Date();
 let currentPage = 1;
 const itemsPerPage = 10;
 
-// 1. 修正語法錯誤與登入回傳
+// GIS 登入處理
 function handleCredentialResponse(response) {
     try {
         const payload = JSON.parse(decodeURIComponent(escape(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))));
@@ -202,7 +202,7 @@ function handleCredentialResponse(response) {
         localStorage.setItem('zenUser', JSON.stringify(currentUser));
         init();
     } catch (e) {
-        console.error("Login processing error:", e);
+        console.error("Login Error:", e);
     }
 }
 
@@ -213,7 +213,7 @@ function init() {
     document.getElementById('user-display-name').innerText = currentUser.name;
     document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
 
-    // 先讀快取
+    // 優先讀取快取確保秒開
     const cached = localStorage.getItem('zenRecords');
     if (cached) {
         try { allRecords = JSON.parse(cached); } catch(e) { allRecords = []; }
@@ -223,18 +223,17 @@ function init() {
     fetchData(); 
 }
 
-// 2. 強化 fetchData：自動將 GAS 欄位（不論中英文）映射到前端
+// 修正：支援中英文欄位映射，確保試算表內容能完整匯入
 async function fetchData() {
     try {
         const res = await fetch(GAS_URL);
         const data = await res.json();
         
-        // 自動映射欄位，防止因為 GAS 標題是中文（如「姓名」）導致前端抓不到資料
         allRecords = data.map(r => ({
-            email: r.email || r.Email || "",
+            email: r.email || r.Email || r.電子郵件地址 || "",
             name: r.name || r.姓名 || "無名",
             date: String(r.date || r.日期 || "").split('T')[0],
-            duration: r.duration || r.分鐘 || 0,
+            duration: parseInt(r.duration || r.分鐘 || 0),
             chakra: r.chakra || r.脈輪 || "未選",
             reflection: r.reflection || r.心得 || ""
         })).sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -242,17 +241,16 @@ async function fetchData() {
         localStorage.setItem('zenRecords', JSON.stringify(allRecords));
         renderAll(); 
     } catch (e) { 
-        console.error("Fetch data error:", e);
+        console.error("Fetch Data Error:", e);
     }
 }
 
 function renderAll() {
     if (!Array.isArray(allRecords)) allRecords = [];
-    // 每個模組獨立執行，防止其中一個出錯導致全部白屏
-    try { renderCalendar(); } catch(e) { console.error("Calendar render error", e); }
-    try { renderMyRecords(); } catch(e) { console.error("My records render error", e); }
-    try { renderPartnerRecords(); } catch(e) { console.error("Partner records render error", e); }
-    try { renderProgress(); } catch(e) { console.error("Progress render error", e); }
+    renderCalendar();
+    renderMyRecords();
+    renderPartnerRecords();
+    renderProgress();
 }
 
 function getDurTag(dur) {
@@ -262,6 +260,7 @@ function getDurTag(dur) {
     return `<span class="tag tag-duration default">${d} min</span>`;
 }
 
+// 修正：刪除按鈕傳入心得內容，確保精確比對
 function renderMyRecords() {
     const container = document.getElementById('my-records-container');
     if(!container || !currentUser) return;
@@ -273,7 +272,7 @@ function renderMyRecords() {
                 <div>
                     ${getDurTag(r.duration)}
                     <span style="cursor:pointer; margin-left:10px; color:#EF4444; font-size:12px;" 
-                          onclick="deleteRecord('${r.date}', '${r.duration}')">🗑️ 刪除</span>
+                          onclick="deleteRecord('${r.date}', '${r.duration}', '${encodeURIComponent(r.reflection)}')">🗑️ 刪除</span>
                 </div>
             </div>
             <div class="reflection-text">${r.reflection}</div>
@@ -281,16 +280,33 @@ function renderMyRecords() {
     `).join('');
 }
 
-async function deleteRecord(date, duration) {
+// 修正：使用四重條件比對（Email+日期+時間+心得），防止誤刪其他紀錄
+async function deleteRecord(date, duration, encodedReflection) {
+    const reflection = decodeURIComponent(encodedReflection);
     if (!confirm(`確定要刪除這筆紀錄嗎？`)) return;
-    allRecords = allRecords.filter(r => !(r.email === currentUser.email && r.date === date && String(r.duration) === String(duration)));
+    
+    // 本地立即更新：精確過濾
+    allRecords = allRecords.filter(r => 
+        !(r.email === currentUser.email && 
+          r.date === date && 
+          String(r.duration) === String(duration) && 
+          r.reflection === reflection)
+    );
+    
     localStorage.setItem('zenRecords', JSON.stringify(allRecords));
     renderAll();
+
     try {
         await fetch(GAS_URL, { 
             method: 'POST', 
             mode: 'no-cors',
-            body: JSON.stringify({ action: 'delete', email: currentUser.email, date: date, duration: duration }) 
+            body: JSON.stringify({ 
+                action: 'delete', 
+                email: currentUser.email, 
+                date: date, 
+                duration: duration,
+                reflection: reflection
+            }) 
         });
     } catch (e) { console.error("Delete sync error", e); }
 }
@@ -301,7 +317,6 @@ function renderPartnerRecords() {
     const nameKey = (document.getElementById('search-name')?.value || "").toLowerCase();
     const chakraKey = document.getElementById('search-chakra')?.value || "";
     
-    // 防禦性檢查：防止 name 或 chakra 為 undefined 時導致 toLowerCase() 報錯
     const filtered = allRecords.filter(r => {
         const rName = (r.name || "").toLowerCase();
         const rChakra = (r.chakra || "");
@@ -323,9 +338,8 @@ function renderPartnerRecords() {
         </div>
     `).join('');
 
-    document.getElementById('page-info').innerText = `第 ${currentPage} / ${totalPages} 頁`;
-    document.getElementById('prev-page').disabled = (currentPage === 1);
-    document.getElementById('next-page').disabled = (currentPage === totalPages);
+    const pageInfo = document.getElementById('page-info');
+    if(pageInfo) pageInfo.innerText = `第 ${currentPage} / ${totalPages} 頁`;
 }
 
 function changePage(step) { currentPage += step; renderPartnerRecords(); }
@@ -358,11 +372,12 @@ function checkForm() {
     const dur = parseInt(document.getElementById('input-duration').value) || 0;
     const isReady = document.getElementById('input-date').value && dur > 0 && document.getElementById('input-chakra').value && document.getElementById('input-reflection').value.trim();
     const btn = document.getElementById('submit-btn');
-    btn.disabled = !isReady;
-    btn.className = 'btn-submit' + (isReady ? ' active' : '') + (dur>=60?' purple': dur>=40?' orange':'');
+    if(btn) {
+        btn.disabled = !isReady;
+        btn.className = 'btn-submit' + (isReady ? ' active' : '') + (dur>=60?' purple': dur>=40?' orange':'');
+    }
 }
 
-// 3. 修正後的 saveRecord：確保本地快取與 UI 同步更新
 async function saveRecord() {
     const durInput = document.getElementById('input-duration').value;
     const dateInput = document.getElementById('input-date').value;
@@ -378,26 +393,17 @@ async function saveRecord() {
         reflection: reflectionInput
     };
 
-    // 立即更新到本地變數與快取，解決 3 秒延遲
     allRecords.unshift(data); 
     localStorage.setItem('zenRecords', JSON.stringify(allRecords));
-    
-    // 強制 UI 重繪
     renderAll(); 
 
-    // 清空表單
     document.getElementById('input-duration').value = '';
     document.getElementById('input-reflection').value = '';
     checkForm();
 
-    // 背景默默上傳
     try {
-        fetch(GAS_URL, { 
-            method: 'POST', 
-            mode: 'no-cors',
-            body: JSON.stringify(data) 
-        });
-    } catch (e) { console.warn("Background upload lag"); }
+        fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) });
+    } catch (e) { console.warn("Background sync error", e); }
 }
 
 function renderProgress() {
@@ -416,7 +422,7 @@ function renderProgress() {
     document.getElementById('current-streak').innerText = streak;
     document.getElementById('header-progress-fill').style.width = Math.min((energy/3333)*100, 100) + '%';
     
-    let lv = "Level 0：初步練習";
+    let lv = "Level 0：初入禪徑";
     if(mine.length >= 100) lv = "Level 4：進階挑戰";
     else if(mine.length >= 70) lv = "Level 3：高度投入";
     else if(mine.length >= 50) lv = "Level 2：穩定練習";
@@ -434,7 +440,10 @@ function calculateStreak(dates) {
     const dateSet = new Set(dates);
     let streak = 0, checkDate = new Date();
     let checkStr = checkDate.toISOString().split('T')[0];
-    if (!dateSet.has(checkStr)) { checkDate.setDate(checkDate.getDate() - 1); checkStr = checkDate.toISOString().split('T')[0]; }
+    if (!dateSet.has(checkStr)) { 
+        checkDate.setDate(checkDate.getDate() - 1); 
+        checkStr = checkDate.toISOString().split('T')[0]; 
+    }
     while (dateSet.has(checkStr)) {
         streak++; checkDate.setDate(checkDate.getDate() - 1);
         checkStr = checkDate.toISOString().split('T')[0];
@@ -444,8 +453,8 @@ function calculateStreak(dates) {
 
 function switchTab(id) {
     document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
-    document.getElementById('btn-'+id).classList.add('active');
-    document.getElementById('tab-'+id).classList.add('active');
+    document.getElementById('btn-'+id)?.classList.add('active');
+    document.getElementById('tab-'+id)?.classList.add('active');
 }
 
 function changeMonth(s) { viewDate.setMonth(viewDate.getMonth()+s); renderCalendar(); }
@@ -454,8 +463,10 @@ function logout() { localStorage.removeItem('zenUser'); location.reload(); }
 window.onload = () => { 
     const savedUser = localStorage.getItem('zenUser');
     if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        init();
+        try {
+            currentUser = JSON.parse(savedUser);
+            init();
+        } catch(e) { logout(); }
     } else {
         document.getElementById('login-section').style.display = 'block';
         document.getElementById('main-content').style.display = 'none';
