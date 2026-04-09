@@ -219,27 +219,30 @@
     async function fetchData() {
     try {
         const res = await fetch(GAS_URL);
+        if (!res.ok) throw new Error('網路回應不正確');
         const data = await res.json();
         
-        // 格式化日期並依日期由新到舊排序
         allRecords = data.map(r => ({
             ...r, 
-            date: String(r.date).includes('T') ? r.date.split('T')[0] : r.date
+            date: String(r.date).split('T')[0]
         })).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        // 立即渲染所有頁面內容（包括夥伴心得與進度）
         renderAll(); 
     } catch (e) { 
-        console.error("資料讀取失敗", e); 
+        console.error("無法載入資料:", e);
+        // 就算失敗也要渲染一次，至少顯示空的列表而不是白屏
+        renderAll();
     }
 }
     
     function renderAll() {
-        renderCalendar();
-        renderMyRecords();
-        renderPartnerRecords();
-        renderProgress();
-    }
+    // 如果資料還沒回來或為空，先給一個空陣列避免報錯導致畫面卡死
+    if (!allRecords) allRecords = [];
+
+    renderHistory();   // 渲染個人紀錄
+    renderPartners();  // 渲染夥伴心得
+    renderProgress(); // 渲染成長進度
+}
 
     function getDurTag(dur) {
         const d = parseInt(dur);
@@ -445,18 +448,22 @@
     function logout() { localStorage.removeItem('zenUser'); location.reload(); }
 
     window.onload = () => { 
+    // 1. 先從本地取得用戶資訊
     const savedUser = localStorage.getItem('zenUser');
+    
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
-        // 先顯示框架，避免白屏
+        
+        // 2. 立即顯示主畫面，這步最重要，確保「跑出畫面」
         document.getElementById('login-section').style.display = 'none';
         document.getElementById('main-content').style.display = 'block';
         document.getElementById('user-display-name').innerText = currentUser.name;
         
-        // 設定初始日期
-        document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+        // 3. 設定預設日期
+        const now = new Date();
+        document.getElementById('input-date').value = now.toISOString().split('T')[0];
 
-        // --- 關鍵：立即抓取所有人的紀錄 (包含夥伴與自己) ---
+        // 4. 最後才去抓資料，失敗也不會影響畫面顯示
         fetchData(); 
     } else {
         document.getElementById('login-section').style.display = 'block';
