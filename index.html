@@ -107,32 +107,26 @@
                 }
             }, [user]);
 
-            // 加快刪除體驗：樂觀更新 + 立即同步月曆
             const deleteLog = async (log) => {
                 if (!window.confirm("確定要刪除這筆紀錄嗎？此動作無法復原。")) return;
-                
-                // 1. 立即從前端狀態移除 (Optimistic Update)
                 setLogs(prev => prev.filter(l => 
                     !(l.email === log.email && l.date === log.date && l.duration === log.duration && l.reflection === log.reflection)
                 ));
-                
-                // 2. 如果月曆展開視窗開著，同步更新它
                 if (selectedDateRecords) {
                     setSelectedDateRecords(prev => ({
                         ...prev,
                         logs: prev.logs.filter(l => !(l.date === log.date && l.duration === log.duration))
                     }));
                 }
-
-                // 3. 背景發送刪除請求
                 try {
                     await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...log, action: 'delete' }) });
                 } catch (e) { 
                     console.error("Delete failed:", e); 
-                    fetchLogs(); // 失敗時重新拉取資料以修正狀態
+                    fetchLogs();
                 }
             };
 
+            // 我的日誌：日期新到舊排序
             const myLogs = useMemo(() =>
                 logs.filter(l => l && l.email === user?.email)
                     .sort((a, b) => b.date.localeCompare(a.date))
@@ -166,7 +160,6 @@
                 return { daysInMonth, map, year, month: month + 1 };
             }, [myLogs, calDate]);
 
-            // 夥伴心得：按日期從新到舊排序
             const filteredLogs = useMemo(() => logs
                 .filter(l => 
                     l && (searchTerm === '' || (l.name || '').includes(searchTerm)) &&
@@ -229,7 +222,8 @@
                                     {selectedDateRecords && (
                                         <div className="mt-6 p-4 bg-white rounded-2xl border border-emerald-100 shadow-sm transition-all">
                                             <div className="flex justify-between items-center mb-2">
-                                                <h4 className="font-bold text-emerald-700">{selectedDateRecords.day} 日紀錄</h4>
+                                                {/* 修正：顯示 月份與日期 */}
+                                                <h4 className="font-bold text-emerald-700">{calendarData.month} 月 {selectedDateRecords.day} 日紀錄</h4>
                                                 <button onClick={() => setSelectedDateRecords(null)} className="text-slate-300 text-xs">關閉</button>
                                             </div>
                                             {selectedDateRecords.logs.length > 0 ? selectedDateRecords.logs.map((l, idx) => (
@@ -253,7 +247,7 @@
                                         <p className="text-3xl font-black text-emerald-700">{stats.total}</p>
                                     </div>
                                     <div className="bg-orange-50 p-5 rounded-3xl text-center">
-                                        <p className="text-xs text-orange-600 font-bold">最高連續天數</p>
+                                        <p className="text-xs text-orange-600 font-bold">最高連續</p>
                                         <p className="text-3xl font-black text-orange-700">{stats.streak}天</p>
                                     </div>
                                 </div>
@@ -270,14 +264,13 @@
                                     {CHAKRAS.map(c=><option key={c} value={c}>{c}</option>)}
                                 </select>
                                 <textarea placeholder="今日心得..." className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold min-h-[120px]" value={formData.reflection} onChange={e=>setFormData({...formData, reflection:e.target.value})} />
+                                
+                                {/* 修正：按鈕顏色根據時長變動 */}
                                 <button disabled={!isFormValid || isSubmitting} onClick={async () => {
                                         setIsSubmitting(true);
                                         const newLog = { email: user.email, name: formData.customName, date: formData.practiceDate, duration: formData.duration, chakra: formData.focusChakra, reflection: formData.reflection };
-                                        
-                                        // 樂觀更新：立即加入列表並跳轉
                                         setLogs(prev => [newLog, ...prev]);
                                         setView('personal');
-                                        
                                         try {
                                             await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...newLog, action: 'add' }) });
                                             setFormData(prev => ({ ...prev, duration: '', reflection: '', practiceDate: new Date().toISOString().split('T')[0] }));
@@ -288,7 +281,11 @@
                                         }
                                         setIsSubmitting(false);
                                     }}
-                                    className={`w-full py-5 rounded-3xl font-black text-white transition-all ${!isFormValid || isSubmitting ? 'bg-slate-200' : 'bg-emerald-600 active:scale-95'}`}>
+                                    className={`w-full py-5 rounded-3xl font-black text-white transition-all 
+                                        ${!isFormValid || isSubmitting ? 'bg-slate-200' : 
+                                          Number(formData.duration) >= 60 ? 'bg-purple-500' :
+                                          Number(formData.duration) >= 40 ? 'bg-orange-400' : 'bg-emerald-600'} 
+                                        active:scale-95`}>
                                     {isSubmitting ? '同步中...' : '送出紀錄'}
                                 </button>
                             </div>
