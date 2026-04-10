@@ -10,53 +10,54 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    </style>
 </head>
 <body class="bg-[#F8FAFC]">
     <div id="root"></div>
 
     <script type="text/babel">
-        // 必須從全域變數 React 中提取功能
         const { useState, useEffect, useMemo } = React;
 
-        // --- 修正後的設定區 ---
+        // --- 設定區 ---
         const GAS_URL = "https://script.google.com/macros/s/AKfycbylgmrDktw1X5h2d7gRiLZirQSDQLJF2N-WlsmB3eyEwAYsAqhQ9m0YF29T_ImGLDAT/exec";
-        // 修正：已移除 ID 中間的空格
         const GOOGLE_CLIENT_ID = "898764620568-6h1uavirukt1k1vpfomfdbge74823vm.apps.googleusercontent.com";
-
         const CHAKRAS = ["腹式呼吸", "名色", "無始", "無明", "吉祥", "如意", "明心", "二空", "智慧", "法眼", "禪心"];
-        
-        const ZEN_LEVELS = [
-            { stage: 1, threshold: 1, name: "靜心起步", iconName: "Sunrise" },
-            { stage: 2, threshold: 4, name: "呼吸自在", iconName: "Wind" },
-            { stage: 3, threshold: 8, name: "專注當下", iconName: "Smile" },
-            { stage: 10, threshold: 33, name: "圓滿自在", iconName: "Crown" },
-        ];
 
-        // 圖標渲染修正版
-        const Icon = ({ name, size = 20, className = "" }) => {
-            const LucideIcon = window.lucide[name];
-            return LucideIcon ? <LucideIcon size={size} className={className} /> : null;
-        };
-
-        // 重要：解決 React Error #130，強制轉化所有資料為字串
+        // 輔助函式：確保顯示文字而非物件 (防止 React Error #130)
         const safeText = (val) => (val === null || val === undefined) ? "" : String(val);
+
+        // 圖標元件
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const LucideIcon = window.lucide[name] || window.lucide.HelpCircle;
+            return <LucideIcon size={size} className={className} />;
+        };
 
         function App() {
             const [user, setUser] = useState(null);
-            const [view, setView] = useState('mine');
+            const [view, setView] = useState('home'); // home, progress, record, personal, partners
             const [globalLogs, setGlobalLogs] = useState([]);
             const [loading, setLoading] = useState(true);
             const [isSubmitting, setIsSubmitting] = useState(false);
+            
+            // 表單與篩選狀態
             const [formData, setFormData] = useState({
                 duration: '', reflection: '', focusChakra: '腹式呼吸', 
                 practiceDate: new Date().toISOString().split('T')[0]
             });
+            const [searchTerm, setSearchTerm] = useState('');
+            const [filterChakra, setFilterChakra] = useState('全部');
+            const [currentPage, setCurrentPage] = useState(1);
 
-            // 初始化 Google 登入
+            // 1. 初始化 Google 登入
             useEffect(() => {
+                // 解決 [GSI_LOGGER] callback is not a function 問題，必須掛載在 window
                 window.handleGoogleLogin = (response) => {
                     const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-                    const loggedInUser = { email: payload.email, name: payload.name };
+                    const loggedInUser = { email: payload.email, name: payload.name, picture: payload.picture };
                     setUser(loggedInUser);
                     localStorage.setItem('zenUser', JSON.stringify(loggedInUser));
                 };
@@ -70,78 +71,232 @@
                 try {
                     const res = await fetch(GAS_URL);
                     const data = await res.json();
-                    // 資料清洗，確保不包含物件以免崩潰
                     setGlobalLogs(data.map(r => ({
+                        id: r.id || Math.random().toString(36).substr(2, 9),
                         email: safeText(r.Email || r.email),
                         name: safeText(r.Name || r.name || "無名"),
                         date: safeText(r.Date || r.date).split('T')[0],
                         duration: parseInt(r.Duration || r.duration || 0),
-                        chakra: safeText(r.Chakra || r.chakra),
+                        chakra: safeText(r.Chakra || r.chakra || "腹式呼吸"),
                         reflection: safeText(r.Reflection || r.reflection)
                     })));
-                } catch (e) { console.error("抓取失敗", e); }
+                } catch (e) { console.error("資料讀取失敗", e); }
                 setLoading(false);
             };
 
-            const myLogs = useMemo(() => user ? globalLogs.filter(l => l.email === user.email) : [], [user, globalLogs]);
+            const logout = () => {
+                setUser(null);
+                localStorage.removeItem('zenUser');
+            };
 
+            // 2. 統計邏輯
+            const myLogs = useMemo(() => user ? globalLogs.filter(l => l.email === user.email) : [], [user, globalLogs]);
+            const cumulativeDays = useMemo(() => new Set(myLogs.map(l => l.date)).size, [myLogs]);
+            
+            const consecutiveDays = useMemo(() => {
+                const dates = Array.from(new Set(myLogs.map(l => l.date))).sort().reverse();
+                let count = 0;
+                let today = new Date().toISOString().split('T')[0];
+                for (let i = 0; i < dates.length; i++) {
+                    const expected = new Date();
+                    expected.setDate(expected.getDate() - i);
+                    if (dates[i] === expected.toISOString().split('T')[0]) count++;
+                    else break;
+                }
+                return count;
+            }, [myLogs]);
+
+            // 3. 表單提交
             const handleSubmit = async () => {
                 if (!user || isSubmitting) return;
                 setIsSubmitting(true);
-                const payload = { ...formData, email: user.email, name: user.name };
+                const payload = { ...formData, email: user.email, name: user.name, action: 'add' };
                 try {
                     await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
                     setFormData({ ...formData, duration: '', reflection: '' });
-                    alert("同步完成！");
+                    alert("打卡成功！");
                     fetchGASData();
-                } catch (e) { alert("發送失敗"); }
+                    setView('home');
+                } catch (e) { alert("同步失敗"); }
                 setIsSubmitting(false);
             };
 
-            if (loading) return <div className="flex h-screen items-center justify-center text-slate-400">系統啟動中...</div>;
+            if (loading) return <div className="flex h-screen items-center justify-center text-slate-400">系統載入中...</div>;
 
             if (!user) return (
-                <div className="flex flex-col items-center justify-center h-screen">
-                    <h1 className="text-2xl font-black mb-6">禪定打卡計畫</h1>
+                <div className="flex flex-col items-center justify-center h-screen bg-white">
+                    <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" className="h-8 mb-8 opacity-50" />
+                    <h1 className="text-3xl font-black text-slate-800 mb-2">100天禪定計畫</h1>
+                    <p className="text-slate-400 mb-8">請登入 Google 帳號以同步數據</p>
                     <div id="g_id_onload" data-client_id={GOOGLE_CLIENT_ID} data-callback="handleGoogleLogin"></div>
-                    <div className="g_id_signin" data-type="standard"></div>
+                    <div className="g_id_signin" data-type="standard" data-shape="pill"></div>
                 </div>
             );
 
+            // 渲染夥伴心得
+            const filteredPartners = globalLogs
+                .filter(l => (searchTerm === '' || l.name.includes(searchTerm)))
+                .filter(l => (filterChakra === '全部' || l.chakra === filterChakra));
+            const paginatedPartners = filteredPartners.slice((currentPage - 1) * 10, currentPage * 10);
+
             return (
-                <div className="max-w-md mx-auto p-4">
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-emerald-100 mb-6">
-                        <div className="flex justify-between items-center">
-                            <h2 className="font-black text-emerald-600">您好，{user.name}</h2>
-                            <span className="text-xs font-bold text-slate-400">累計 {myLogs.length} 次紀錄</span>
-                        </div>
-                    </div>
+                <div className="max-w-md mx-auto min-h-screen flex flex-col pb-24">
+                    {/* 頂部引言 */}
+                    <header className="bg-white p-6 pt-10 text-center border-b border-slate-50">
+                        <p className="text-sm font-bold text-slate-600 leading-relaxed mb-2">
+                            「禪令忙碌的人找到寧靜，禪令痛苦的人解脫煩惱，<br/>禪令快樂的人獲得智慧，禪令不平凡的人，明瞭平凡的真諦。」
+                        </p>
+                        <p className="text-xs text-emerald-600 font-black">禪宗第 85 代宗師 悟覺妙天禪師</p>
+                    </header>
 
-                    <div className="flex bg-white p-1 rounded-2xl mb-6 shadow-sm">
-                        <button onClick={() => setView('mine')} className={`flex-1 py-3 rounded-xl text-sm font-bold ${view==='mine'?'bg-emerald-600 text-white':'text-slate-400'}`}>打卡</button>
-                        <button onClick={() => setView('global')} className={`flex-1 py-3 rounded-xl text-sm font-bold ${view==='global'?'bg-emerald-600 text-white':'text-slate-400'}`}>夥伴</button>
-                    </div>
-
-                    {view === 'mine' ? (
-                        <div className="space-y-4">
-                            <input type="number" placeholder="時長 (min)" className="w-full p-4 bg-white rounded-2xl border" value={formData.duration} onChange={e=>setFormData({...formData, duration:e.target.value})} />
-                            <textarea placeholder="今日心得..." className="w-full p-4 bg-white rounded-2xl border min-h-[100px]" value={formData.reflection} onChange={e=>setFormData({...formData, reflection:e.target.value})} />
-                            <button onClick={handleSubmit} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black">同步紀錄</button>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {globalLogs.map((log, i) => (
-                                <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100">
-                                    <div className="flex justify-between text-[10px] font-bold text-slate-400">
-                                        <span>{log.name}</span>
-                                        <span>{log.date}</span>
+                    <main className="p-4 flex-1">
+                        {/* 視圖切換 */}
+                        {view === 'home' && (
+                            <section className="space-y-6">
+                                <div className="flex justify-between items-center bg-emerald-600 p-6 rounded-[2rem] text-white shadow-lg shadow-emerald-100">
+                                    <div>
+                                        <p className="text-xs opacity-80 font-bold mb-1">歡迎回來</p>
+                                        <h2 className="text-xl font-black">{user.name}</h2>
                                     </div>
-                                    <p className="text-sm font-bold text-slate-700 mt-1">{log.duration} 分鐘 · {log.chakra}</p>
-                                    <p className="text-xs text-slate-500 italic mt-1">「{log.reflection}」</p>
+                                    <button onClick={logout} className="p-2 bg-white/20 rounded-full"><Icon name="LogOut" size={18} /></button>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                
+                                <div className="bg-white p-6 rounded-[2rem] shadow-sm">
+                                    <div className="flex items-center gap-2 mb-4 font-black text-slate-800">
+                                        <Icon name="Calendar" className="text-emerald-500" /> 禪定月曆
+                                    </div>
+                                    <div className="calendar-grid text-center text-[10px] font-bold text-slate-300 mb-2">
+                                        {['日','一','二','三','四','五','六'].map(d=><div key={d}>{d}</div>)}
+                                    </div>
+                                    <div className="calendar-grid">
+                                        {/* 簡易月曆邏輯：目前月份 */}
+                                        {Array.from({length: 30}).map((_, i) => {
+                                            const day = i + 1;
+                                            const dateStr = `2026-04-${day.toString().padStart(2,'0')}`;
+                                            const hasLog = myLogs.some(l => l.date === dateStr);
+                                            return (
+                                                <div key={i} className={`aspect-square flex items-center justify-center rounded-full text-xs font-bold ${hasLog ? 'bg-emerald-500 text-white' : 'text-slate-400'}`}>
+                                                    {day}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
+                        {view === 'progress' && (
+                            <section className="space-y-6">
+                                <h3 className="font-black text-lg text-slate-800 flex items-center gap-2"><Icon name="Zap" className="text-amber-500" /> 成長進度</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-white p-4 rounded-3xl border border-slate-100">
+                                        <p className="text-xs font-bold text-slate-400 mb-1">累積天數</p>
+                                        <div className="text-2xl font-black text-slate-800">{cumulativeDays} <span className="text-xs">天</span></div>
+                                        <p className="text-[10px] mt-2 text-emerald-600 font-bold">Level {cumulativeDays >= 100 ? 4 : cumulativeDays >= 70 ? 3 : cumulativeDays >= 50 ? 2 : 1}</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-3xl border border-slate-100">
+                                        <p className="text-xs font-bold text-slate-400 mb-1">連續挑戰</p>
+                                        <div className="text-2xl font-black text-slate-800">{consecutiveDays} <span className="text-xs">天</span></div>
+                                        <p className="text-[10px] mt-2 text-amber-600 font-bold">{consecutiveDays >= 100 ? '終極挑戰達成' : '持續進步中'}</p>
+                                    </div>
+                                </div>
+                                {/* 規則清單 */}
+                                <div className="bg-white p-6 rounded-3xl text-sm space-y-2">
+                                    <p className="font-black mb-2">等級獎勵制</p>
+                                    <div className="flex justify-between text-slate-500"><span>L1: 30次</span><span className={cumulativeDays>=30?'text-emerald-500':'opacity-30'}>建立習慣</span></div>
+                                    <div className="flex justify-between text-slate-500"><span>L2: 50次</span><span className={cumulativeDays>=50?'text-emerald-500':'opacity-30'}>穩定練習</span></div>
+                                    <div className="flex justify-between text-slate-500"><span>L3: 70次</span><span className={cumulativeDays>=70?'text-emerald-500':'opacity-30'}>高度投入</span></div>
+                                    <div className="flex justify-between text-slate-500"><span>L4: 100次</span><span className={cumulativeDays>=100?'text-emerald-500':'opacity-30'}>進階挑戰</span></div>
+                                </div>
+                            </section>
+                        )}
+
+                        {view === 'record' && (
+                            <section className="space-y-4">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-black text-lg text-slate-800">紀錄您的禪定</h3>
+                                    {formData.duration >= 60 ? (
+                                        <span className="bg-purple-100 text-purple-600 text-[10px] px-3 py-1 rounded-full font-black">極致加成 (2.0x)</span>
+                                    ) : formData.duration >= 40 ? (
+                                        <span className="bg-orange-100 text-orange-600 text-[10px] px-3 py-1 rounded-full font-black">深度加成 (1.5x)</span>
+                                    ) : null}
+                                </div>
+                                <input type="date" className="w-full p-4 bg-white rounded-2xl border-none shadow-sm font-bold" value={formData.practiceDate} onChange={e=>setFormData({...formData, practiceDate:e.target.value})} />
+                                <div className="relative">
+                                    <input type="number" placeholder="禪定多久 (分鐘)" className="w-full p-4 bg-white rounded-2xl border-none shadow-sm font-bold" value={formData.duration} onChange={e=>setFormData({...formData, duration:e.target.value})} />
+                                    <span className="absolute right-4 top-4 text-slate-300 font-bold">分鐘</span>
+                                </div>
+                                <select className="w-full p-4 bg-white rounded-2xl border-none shadow-sm font-bold" value={formData.focusChakra} onChange={e=>setFormData({...formData, focusChakra:e.target.value})}>
+                                    {CHAKRAS.map(c=><option key={c} value={c}>{c}</option>)}
+                                </select>
+                                <textarea placeholder="寫下您的心得發現..." className="w-full p-4 bg-white rounded-2xl border-none shadow-sm font-bold min-h-[150px]" value={formData.reflection} onChange={e=>setFormData({...formData, reflection:e.target.value})} />
+                                <button 
+                                    onClick={handleSubmit} 
+                                    disabled={isSubmitting}
+                                    className={`w-full py-5 rounded-3xl font-black text-white shadow-lg transition-all ${isSubmitting ? 'bg-slate-300' : formData.duration >= 60 ? 'bg-purple-600 shadow-purple-100' : formData.duration >= 40 ? 'bg-orange-500 shadow-orange-100' : 'bg-emerald-600 shadow-emerald-100'}`}>
+                                    {isSubmitting ? '同步中...' : '送出禪定紀錄'}
+                                </button>
+                            </section>
+                        )}
+
+                        {view === 'personal' && (
+                            <section className="space-y-4">
+                                <h3 className="font-black text-lg text-slate-800">我的禪定日誌</h3>
+                                {myLogs.length === 0 && <p className="text-center py-10 text-slate-400">尚無紀錄，開始打卡吧！</p>}
+                                {myLogs.map(log => (
+                                    <div key={log.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-50 relative group">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{log.date}</span>
+                                            <div className="flex gap-2">
+                                                <button className="p-1 text-slate-300 hover:text-emerald-500"><Icon name="Pencil" size={14}/></button>
+                                                <button className="p-1 text-slate-300 hover:text-red-500"><Icon name="Trash2" size={14}/></button>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm font-black text-slate-700 mb-1">{log.duration} 分鐘 · {log.chakra}</p>
+                                        <p className="text-xs text-slate-500 leading-relaxed italic">「{log.reflection}」</p>
+                                    </div>
+                                ))}
+                            </section>
+                        )}
+
+                        {view === 'partners' && (
+                            <section className="space-y-4">
+                                <div className="flex gap-2">
+                                    <input placeholder="搜尋人名..." className="flex-1 p-3 bg-white rounded-xl text-xs font-bold shadow-sm" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
+                                    <select className="p-3 bg-white rounded-xl text-xs font-bold shadow-sm" value={filterChakra} onChange={e=>setFilterChakra(e.target.value)}>
+                                        <option value="全部">全部脈輪</option>
+                                        {CHAKRAS.map(c=><option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                                <div className="space-y-3">
+                                    {paginatedPartners.map((log, i) => (
+                                        <div key={i} className="bg-white p-4 rounded-2xl border border-slate-50">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="font-black text-xs text-emerald-600">{log.name}</span>
+                                                <span className="text-[10px] font-bold text-slate-300">{log.date}</span>
+                                            </div>
+                                            <p className="text-[11px] font-bold text-slate-600 mb-1">{log.duration} 分鐘 · {log.chakra}</p>
+                                            <p className="text-[11px] text-slate-400 italic">「{log.reflection}」</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex justify-center gap-4 mt-6">
+                                    <button disabled={currentPage===1} onClick={()=>setCurrentPage(p=>p-1)} className="p-2 bg-white rounded-full disabled:opacity-30 shadow-sm"><Icon name="ChevronLeft" /></button>
+                                    <span className="flex items-center font-black text-xs text-slate-400">第 {currentPage} 頁</span>
+                                    <button disabled={paginatedPartners.length < 10} onClick={()=>setCurrentPage(p=>p+1)} className="p-2 bg-white rounded-full disabled:opacity-30 shadow-sm"><Icon name="ChevronRight" /></button>
+                                </div>
+                            </section>
+                        )}
+                    </main>
+
+                    {/* 底部導覽列 */}
+                    <nav className="fixed bottom-6 left-4 right-4 bg-white/80 backdrop-blur-xl border border-white p-2 rounded-[2.5rem] shadow-2xl flex justify-around items-center">
+                        <button onClick={()=>setView('home')} className={`p-4 rounded-full transition-all ${view==='home'?'bg-emerald-600 text-white shadow-lg shadow-emerald-100': 'text-slate-300'}`}><Icon name="Home" /></button>
+                        <button onClick={()=>setView('progress')} className={`p-4 rounded-full transition-all ${view==='progress'?'bg-emerald-600 text-white shadow-lg shadow-emerald-100': 'text-slate-300'}`}><Icon name="Trophy" /></button>
+                        <button onClick={()=>setView('record')} className={`p-4 rounded-full transition-all ${view==='record'?'bg-emerald-600 text-white shadow-lg shadow-emerald-100': 'text-slate-300'}`}><Icon name="Plus" /></button>
+                        <button onClick={()=>setView('personal')} className={`p-4 rounded-full transition-all ${view==='personal'?'bg-emerald-600 text-white shadow-lg shadow-emerald-100': 'text-slate-300'}`}><Icon name="BookOpen" /></button>
+                        <button onClick={()=>setView('partners')} className={`p-4 rounded-full transition-all ${view==='partners'?'bg-emerald-600 text-white shadow-lg shadow-emerald-100': 'text-slate-300'}`}><Icon name="Users" /></button>
+                    </nav>
                 </div>
             );
         }
