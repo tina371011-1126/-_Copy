@@ -109,24 +109,29 @@
                 }
             }, [user]);
 
-            const deleteLog = async (log) => {
-                if (!window.confirm("確定要刪除這筆紀錄嗎？此動作無法復原。")) return;
-                setLogs(prev => prev.filter(l => 
-                    !(l.email === log.email && l.date === log.date && l.duration === log.duration && l.reflection === log.reflection)
-                ));
-                if (selectedDateRecords) {
-                    setSelectedDateRecords(prev => ({
-                        ...prev,
-                        logs: prev.logs.filter(l => !(l.date === log.date && l.duration === log.duration))
-                    }));
-                }
-                try {
-                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...log, action: 'delete' }) });
-                } catch (e) { 
-                    console.error("Delete failed:", e); 
-                    fetchLogs();
-                }
-            };
+           // 尋找這段 deleteLog 函式並整個替換
+const deleteLog = async (log) => {
+    if (!window.confirm("確定要刪除這筆紀錄嗎？此動作無法復原。")) return;
+    
+    // 修正核心：改用 l !== log 直接比對物件本身，精準過濾掉要刪除的那筆
+    setLogs(prev => prev.filter(l => l !== log));
+    
+    // 同步更新月曆展開時的當日小視窗
+    if (selectedDateRecords) {
+        setSelectedDateRecords(prev => ({
+            ...prev,
+            logs: prev.logs.filter(l => l !== log)
+        }));
+    }
+
+    // 傳送刪除請求給後端
+    try {
+        await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...log, action: 'delete' }) });
+    } catch (e) { 
+        console.error("Delete failed:", e); 
+        fetchLogs(); // 若失敗則重新拉取資料
+    }
+};
 
             // 我的日誌：日期新到舊排序
             const myLogs = useMemo(() =>
