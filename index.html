@@ -1,13 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  getFirestore, collection, doc, 
-  onSnapshot, serverTimestamp, query, setDoc, deleteDoc, updateDoc
-} from 'firebase/firestore';
-import { 
-  getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged 
-} from 'firebase/auth';
-import { initializeApp } from 'firebase/app';
-import { 
   Flower, Timer, Calendar, 
   Check, HelpCircle, Pencil, Trash2, X, 
   Sparkles, Crown, Eye, Wind, Sun, Sunrise, 
@@ -15,38 +7,39 @@ import {
   Star, Target, Medal, Flame, ChevronRight, ChevronLeft,
   Loader2, Radio, User, Users, ClipboardList,
   AlertCircle, ShieldCheck, Music, Ghost, Quote, Save, MessageSquare,
-  Coffee, Heart, Smile, Zap, AlertTriangle, TrendingUp, Gem, Quote as QuoteIcon
+  Coffee, Heart, Smile, Zap, AlertTriangle, TrendingUp, Gem
 } from 'lucide-react';
 
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'zen-meditation-33-days';
+// 替換為您的 Google Apps Script 部署網址
+const GAS_URL = "https://script.google.com/macros/s/AKfycbylgmrDktw1X5h2d7gRiLZirQSDQLJF2N-WlsmB3eyEwAYsAqhQ9m0YF29T_ImGLDAT/exec";
+// 替換為您的 Google Cloud 憑證 Client ID
+const GOOGLE_CLIENT_ID = "898764620568-6h1uavirukt1k1vpfpvmfdbge74823vm.apps.googleusercontent.com";
 
 const CHAKRAS = ["腹式呼吸", "名色", "無始", "無明", "吉祥", "如意", "明心", "二空", "智慧", "法眼", "禪心"];
 
 const ZEN_LEVELS = [
-  { stage: 1, threshold: 1, name: "靜心起步", Icon: Sunrise, reward: "「今日小歇」勳章", detail: "養成每天給自己 10 分鐘的習慣" },
-  { stage: 2, threshold: 4, name: "呼吸自在", Icon: Wind, reward: "「森林深呼吸」背景音", detail: "感覺呼吸變順暢了，心不再那麼急促" },
-  { stage: 3, threshold: 8, name: "專注當下", Icon: Smile, reward: "「告別雜念」頭銜", detail: "不再被手機通知牽著走，專注力提升" },
-  { stage: 4, threshold: 12, name: "身心舒坦", Icon: Heart, reward: "「深度放鬆」導引", detail: "睡得更香，起床時感覺更有活力" },
-  { stage: 5, threshold: 16, name: "智慧湧現", Icon: Zap, reward: "「靈感湧泉」背景", detail: "面對困難時，內心更能保持平穩" },
-  { stage: 6, threshold: 20, name: "情緒穩定", Icon: ShieldCheck, reward: "「抗壓小護盾」", detail: "不容易被外在的人事物激怒" },
-  { stage: 7, threshold: 24, name: "覺察清晰", Icon: Eye, reward: "「清亮眼界」音效", detail: "看待事情的角度變得更開闊了" },
-  { stage: 8, threshold: 28, name: "與我合一", Icon: Leaf, reward: "「溫暖光環」特效", detail: "感受到自己與周遭環境的連結" },
-  { stage: 9, threshold: 31, name: "行路明燈", Icon: Coffee, reward: "開啟「給予祝福」功能", detail: "有能力用正能量影響身邊的人" },
-  { stage: 10, threshold: 33, name: "圓滿自在", Icon: Crown, reward: "「永恆平安」數位證書", detail: "禪定已成為生活中最自然的一部分" },
+  { stage: 1, threshold: 1, name: "靜心起步", Icon: Sunrise },
+  { stage: 2, threshold: 4, name: "呼吸自在", Icon: Wind },
+  { stage: 3, threshold: 8, name: "專注當下", Icon: Smile },
+  { stage: 4, threshold: 12, name: "身心舒坦", Icon: Heart },
+  { stage: 5, threshold: 16, name: "智慧湧現", Icon: Zap },
+  { stage: 6, threshold: 20, name: "情緒穩定", Icon: ShieldCheck },
+  { stage: 7, threshold: 24, name: "覺察清晰", Icon: Eye },
+  { stage: 8, threshold: 28, name: "與我合一", Icon: Leaf },
+  { stage: 9, threshold: 31, name: "行路明燈", Icon: Coffee },
+  { stage: 10, threshold: 33, name: "圓滿自在", Icon: Crown },
 ];
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState('mine');
-  const [logs, setLogs] = useState([]);
-  const [globalLogs, setGlobalLogs] = useState([]);
+  const [logs, setLogs] = useState([]);         // 我的紀錄
+  const [globalLogs, setGlobalLogs] = useState([]); // 夥伴心得 (來自試算表)
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
   const getTodayStr = () => new Date().toISOString().split('T')[0];
 
   const [formData, setFormData] = useState({
@@ -57,48 +50,67 @@ export default function App() {
     practiceDate: getTodayStr()
   });
 
-  const [editingId, setEditingId] = useState(null);
-  const [editData, setEditData] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [deleteId, setDeleteId] = useState(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-
+  // 初始化：設定 Google 登入全域函數與讀取 GAS 資料
   useEffect(() => {
-    const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-        await signInAnonymously(auth);
+    // 解決 [GSI_LOGGER] callback is not a function 錯誤
+    window.handleGoogleLogin = (response) => {
+      try {
+        const payload = JSON.parse(decodeURIComponent(escape(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))));
+        const loggedInUser = { email: payload.email, name: payload.name };
+        setUser(loggedInUser);
+        setFormData(prev => ({ ...prev, name: loggedInUser.name }));
+        localStorage.setItem('zenUser', JSON.stringify(loggedInUser));
+      } catch (e) {
+        console.error("Login Error:", e);
       }
     };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) setLoading(false);
-    });
-    return () => unsubscribe();
+
+    // 檢查本地快取登入狀態
+    const savedUser = localStorage.getItem('zenUser');
+    if (savedUser) {
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+      setFormData(prev => ({ ...prev, name: parsedUser.name }));
+    }
+
+    fetchGASData();
   }, []);
 
-  useEffect(() => {
-    if (!user) return;
-    
-    const qPersonal = collection(db, 'artifacts', appId, 'users', user.uid, 'logs');
-    const unsubPersonal = onSnapshot(qPersonal, (snap) => {
-      const data = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-      setLogs(data);
+  // 從 GAS 獲取試算表資料，對應表頭：Email, Name, Date, Duration, Chakra, Reflection
+  const fetchGASData = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(GAS_URL);
+      const data = await res.json();
+      
+      const formattedData = data.map((r, index) => ({
+        id: index.toString(),
+        email: r.email || r.Email || r.電子郵件地址 || "",
+        name: r.name || r.Name || r.姓名 || "無名",
+        practiceDate: String(r.date || r.Date || r.日期 || "").split('T')[0],
+        duration: parseInt(r.duration || r.Duration || r.分鐘 || 0),
+        focusChakra: r.chakra || r.Chakra || r.脈輪 || "未選",
+        reflection: r.reflection || r.Reflection || r.心得 || "",
+        timestamp: new Date(r.date || r.Date || Date.now()).getTime()
+      })).sort((a, b) => b.timestamp - a.timestamp);
+
+      setGlobalLogs(formattedData);
+    } catch (err) {
+      console.error("Fetch GAS Error:", err);
+    } finally {
       setLoading(false);
-    }, () => setLoading(false));
+    }
+  };
 
-    const qGlobal = collection(db, 'artifacts', appId, 'public', 'data', 'all_logs');
-    const unsubGlobal = onSnapshot(qGlobal, (snap) => {
-      const data = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-      setGlobalLogs(data);
-    });
+  // 當使用者登入或 globalLogs 更新時，過濾出個人的紀錄
+  useEffect(() => {
+    if (user && globalLogs.length > 0) {
+      const myLogs = globalLogs.filter(log => log.email === user.email);
+      setLogs(myLogs);
+    }
+  }, [user, globalLogs]);
 
-    return () => { unsubPersonal(); unsubGlobal(); };
-  }, [user]);
-
+  // 點數計算邏輯
   const calculatePoints = () => {
     if (logs.length === 0) return 0;
     const uniqueDays = {};
@@ -106,11 +118,8 @@ export default function App() {
       const date = log.practiceDate;
       const duration = parseInt(log.duration);
       let weight = 1.0;
-      if (duration >= 60) {
-        weight = 2.0;
-      } else if (duration >= 40) {
-        weight = 1.5;
-      }
+      if (duration >= 60) weight = 2.0;
+      else if (duration >= 40) weight = 1.5;
       
       if (!uniqueDays[date] || weight > uniqueDays[date]) {
         uniqueDays[date] = weight;
@@ -121,8 +130,9 @@ export default function App() {
   };
 
   const currentPoints = calculatePoints();
-  const currentLevel = [...ZEN_LEVELS].reverse().find(l => currentPoints >= l.threshold) || { stage: 0, name: "準備開啟旅程", Icon: Sunrise, reward: "無" };
+  const currentLevel = [...ZEN_LEVELS].reverse().find(l => currentPoints >= l.threshold) || { stage: 0, name: "準備開啟旅程", Icon: Sunrise };
 
+  // 月曆渲染邏輯
   const calendarDays = useMemo(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
@@ -134,8 +144,6 @@ export default function App() {
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dayLogs = logs.filter(l => l.practiceDate === dateStr);
-      const hasRecord = dayLogs.length > 0;
-      
       let level = 0; 
       dayLogs.forEach(l => {
         const dur = parseInt(l.duration);
@@ -143,8 +151,7 @@ export default function App() {
         else if (dur >= 40) level = Math.max(level, 2);
         else level = Math.max(level, 1);
       });
-      
-      days.push({ day: d, dateStr, hasRecord, level });
+      days.push({ day: d, dateStr, hasRecord: dayLogs.length > 0, level });
     }
     return days;
   }, [currentMonth, logs]);
@@ -155,73 +162,87 @@ export default function App() {
                       formData.reflection.trim() !== '' &&
                       formData.practiceDate !== '';
 
+  // 提交資料至 GAS
   const handleSubmit = async () => {
     if (!user || !isFormValid || isSubmitting) return;
     setIsSubmitting(true);
-    const recordId = crypto.randomUUID(); 
+    
     const payload = {
+      email: user.email,
       name: formData.name.trim(),
+      date: formData.practiceDate,
       duration: parseInt(formData.duration) || 0,
-      reflection: formData.reflection.trim(),
-      focusChakra: formData.focusChakra,
-      practiceDate: formData.practiceDate,
-      uid: user.uid,
-      createdAt: Date.now(),
-      timestamp: serverTimestamp()
+      chakra: formData.focusChakra,
+      reflection: formData.reflection.trim()
     };
 
+    // 1. 本地預先更新畫面 (Optimistic UI)
+    const newLog = {
+      ...payload,
+      id: Date.now().toString(),
+      practiceDate: payload.date,
+      focusChakra: payload.chakra,
+      timestamp: Date.now()
+    };
+    setGlobalLogs([newLog, ...globalLogs]);
+    setLogs([newLog, ...logs]);
+    
+    setFormData({ ...formData, duration: '', reflection: '' });
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
+
+    // 2. 背景同步至 GAS 試算表
     try {
-      await Promise.all([
-        setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', recordId), payload),
-        setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'all_logs', recordId), payload)
-      ]);
-      setFormData({ ...formData, duration: '', reflection: '' });
-      setShowConfirm(false); 
-      setShowSuccess(true);
+      await fetch(GAS_URL, {
+        method: 'POST',
+        mode: 'no-cors', // 解決跨域問題，交給背景處理
+        body: JSON.stringify(payload)
+      });
+      // 可以選擇在此處重新呼叫 fetchGASData() 確保完全同步
     } catch (err) {
-      console.error("提交失敗", err);
+      console.error("提交至 GAS 失敗", err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const startEdit = (log) => {
-    setEditingId(log.id);
-    setEditData({ ...log });
+  const handleLogout = () => {
+    localStorage.removeItem('zenUser');
+    setUser(null);
   };
 
-  const saveEdit = async () => {
-    if (!user || !editData) return;
-    try {
-      await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingId), editData);
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'all_logs', editingId), editData);
-      setEditingId(null);
-      setEditData(null);
-    } catch (err) { console.error(err); }
-  };
-
-  const confirmDelete = async () => {
-    if (!user || !deleteId) return;
-    try {
-      await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', deleteId));
-      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'all_logs', deleteId));
-      setDeleteId(null);
-    } catch (err) { console.error(err); }
-  };
-
-  const getWeightColor = (duration) => {
-    const d = parseInt(duration);
-    if (d >= 60) return 'text-purple-600 bg-purple-50 ring-purple-100';
-    if (d >= 40) return 'text-amber-600 bg-amber-50 ring-amber-100';
-    return 'text-emerald-600 bg-emerald-50 ring-emerald-100';
-  };
-
-  const getWeightTag = (duration) => {
-    const d = parseInt(duration);
-    if (d >= 60) return { label: '極致禪定 (2.0x)', color: 'bg-purple-600', icon: <Crown size={10} fill="currentColor" /> };
-    if (d >= 40) return { label: '深度禪定 (1.5x)', color: 'bg-amber-500', icon: <Zap size={10} fill="currentColor" /> };
-    return null;
-  };
+  // 未登入畫面：嵌入 Google 登入按鈕
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-6">
+        <div className="bg-white p-8 rounded-3xl shadow-lg text-center max-w-sm w-full border border-slate-100">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Sunrise size={32} />
+          </div>
+          <h1 className="text-2xl font-black text-slate-800 mb-2">禪心靜坐追蹤</h1>
+          <p className="text-slate-500 font-medium mb-8">請登入您的帳號以同步試算表紀錄</p>
+          
+          <div id="g_id_onload"
+               data-client_id={GOOGLE_CLIENT_ID}
+               data-context="signin"
+               data-ux_mode="popup"
+               data-callback="handleGoogleLogin"
+               data-auto_prompt="false">
+          </div>
+          <div className="g_id_signin flex justify-center"
+               data-type="standard"
+               data-shape="rectangular"
+               data-theme="outline"
+               data-text="signin_with"
+               data-size="large"
+               data-logo_alignment="left">
+          </div>
+        </div>
+        {/* 動態載入 Google 登入腳本 */}
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+      </div>
+    );
+  }
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -229,22 +250,146 @@ export default function App() {
     </div>
   );
 
+  // 主畫面 UI 渲染
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 pb-24 font-sans">
+      {/* 頂部進度列 */}
       <div className="bg-white border-b border-slate-100 sticky top-0 z-30 shadow-sm">
         <div className="max-w-md mx-auto px-6 py-4">
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-100">
-                {currentLevel.Icon && <currentLevel.Icon size={22} />}
+              <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                <currentLevel.Icon size={22} />
               </div>
               <div>
                 <h1 className="text-sm font-black text-slate-900 leading-tight">階段 {currentLevel.stage}：{currentLevel.name}</h1>
-                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">目前禪定狀態</p>
+                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{user.name} 的禪定狀態</p>
               </div>
             </div>
             <div className="text-right">
               <div className="flex items-center justify-end gap-1">
                 <span className="text-xl font-black text-emerald-600">{currentPoints}</span>
-                {parseInt(formData.duration) >= 60 ? (
-                  <Crown size={14} classNam
+                <span className="text-xs font-bold text-slate-400">/ 33</span>
+              </div>
+              <button onClick={handleLogout} className="text-[10px] text-slate-400 underline mt-1 hover:text-slate-600">登出</button>
+            </div>
+          </div>
+          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-emerald-500 transition-all duration-1000 ease-out"
+              style={{ width: `${Math.min((currentPoints / 33) * 100, 100)}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto px-4 mt-6">
+        {/* 切換頁籤 */}
+        <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100 mb-6">
+          <button 
+            onClick={() => setView('mine')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${view === 'mine' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500'}`}
+          >
+            <User size={16} /> 我的紀錄
+          </button>
+          <button 
+            onClick={() => setView('global')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${view === 'global' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500'}`}
+          >
+            <Users size={16} /> 夥伴心得
+          </button>
+        </div>
+
+        {view === 'mine' ? (
+          <div className="space-y-6">
+            {/* 填寫表單 */}
+            <section className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+              <h2 className="text-lg font-black flex items-center gap-2 mb-4"><Pencil size={20} className="text-emerald-500" /> 今日禪定紀錄</h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <input 
+                    type="date" value={formData.practiceDate} onChange={e => setFormData({...formData, practiceDate: e.target.value})}
+                    className="px-4 py-3 bg-slate-50 border-0 rounded-xl focus:ring-2 focus:ring-emerald-500 font-medium"
+                  />
+                  <input 
+                    type="number" placeholder="時長 (分鐘)" 
+                    value={formData.duration} onChange={e => setFormData({...formData, duration: e.target.value})}
+                    className="px-4 py-3 bg-slate-50 border-0 rounded-xl focus:ring-2 focus:ring-emerald-500 font-medium"
+                  />
+                </div>
+                <select 
+                  value={formData.focusChakra} onChange={e => setFormData({...formData, focusChakra: e.target.value})}
+                  className="w-full px-4 py-3 bg-slate-50 border-0 rounded-xl focus:ring-2 focus:ring-emerald-500 font-medium appearance-none"
+                >
+                  {CHAKRAS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <textarea 
+                  placeholder="寫下今日的心得或是覺察..." 
+                  value={formData.reflection} onChange={e => setFormData({...formData, reflection: e.target.value})}
+                  className="w-full px-4 py-3 bg-slate-50 border-0 rounded-xl focus:ring-2 focus:ring-emerald-500 min-h-[100px] font-medium"
+                />
+                <button 
+                  onClick={handleSubmit} disabled={!isFormValid || isSubmitting}
+                  className={`w-full py-4 rounded-2xl font-black text-white transition-all shadow-lg ${isFormValid ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-95' : 'bg-slate-300 cursor-not-allowed'}`}
+                >
+                  {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : '同步至試算表紀錄'}
+                </button>
+              </div>
+            </section>
+
+            {/* 月曆 */}
+            <section className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold">修行進度月曆</h3>
+                <div className="flex gap-2">
+                  <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))}><ChevronLeft size={20} /></button>
+                  <span className="text-sm font-bold">{currentMonth.getFullYear()} / {currentMonth.getMonth() + 1}</span>
+                  <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))}><ChevronRight size={20} /></button>
+                </div>
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 mb-2">
+                {['日', '一', '二', '三', '四', '五', '六'].map(d => <div key={d}>{d}</div>)}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {calendarDays.map((d, i) => (
+                  <div key={i} className="aspect-square flex items-center justify-center text-xs font-bold rounded-lg relative">
+                    {d && (
+                      <div className={`w-full h-full flex items-center justify-center rounded-lg ${d.level === 3 ? 'bg-purple-100 text-purple-600' : d.level === 2 ? 'bg-amber-100 text-amber-600' : d.level === 1 ? 'bg-emerald-100 text-emerald-600' : 'text-slate-300'}`}>
+                        {d.day}
+                        {d.hasRecord && <div className="absolute bottom-1 w-1 h-1 bg-current rounded-full" />}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : (
+          /* 夥伴心得 (從 GAS 讀取並渲染所有資料) */
+          <div className="space-y-4">
+            {globalLogs.map(log => (
+              <div key={log.id} className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-black text-slate-900">{log.name}</h4>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">{log.practiceDate} · {log.focusChakra}</p>
+                  </div>
+                  <div className={`px-2 py-1 rounded-lg text-[10px] font-black ${log.duration >= 60 ? 'bg-purple-50 text-purple-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                    {log.duration} MIN
+                  </div>
+                </div>
+                <p className="text-sm leading-relaxed text-slate-600 font-medium bg-slate-50 p-3 rounded-xl italic">「{log.reflection}」</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showSuccess && (
+        <div className="fixed bottom-24 left-4 right-4 bg-emerald-600 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
+          <Sparkles /> <span className="font-bold">紀錄已成功同步至試算表！</span>
+        </div>
+      )}
+    </div>
+  );
+}
