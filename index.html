@@ -52,16 +52,17 @@
         };
 
         function App() {
-            const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('zenUser_v2')) || null);
+            // 修正點 1：更強健的初始化
+            const [user, setUser] = useState(() => {
+                const saved = localStorage.getItem('zenUser_v2');
+                return saved ? JSON.parse(saved) : null;
+            });
             const [view, setView] = useState('home');
             const [logs, setLogs] = useState([]);
             const [loading, setLoading] = useState(true);
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [selectedDateRecords, setSelectedDateRecords] = useState(null);
-            
-            // 新增：日曆當前查看年月
             const [calDate, setCalDate] = useState(new Date());
-
             const [searchTerm, setSearchTerm] = useState('');
             const [filterChakra, setFilterChakra] = useState('');
 
@@ -83,9 +84,10 @@
                 }
             }, []);
 
+            // 修正點 2：整合 Google 登入邏輯與按鈕渲染
             useEffect(() => {
                 fetchLogs();
-                // Google Login Handler
+                
                 window.handleGoogleLogin = (response) => {
                     const base64 = response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
                     const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
@@ -95,19 +97,25 @@
                     setFormData(prev => ({ ...prev, customName: loggedInUser.name }));
                     localStorage.setItem('zenUser_v2', JSON.stringify(loggedInUser));
                 };
-            }, [fetchLogs]);
 
-            useEffect(() => {
+                // 只有在沒登入時才啟動按鈕偵測
                 if (!user) {
-                    const tryRender = () => {
-                        if (window.google?.accounts?.id) {
-                            window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: window.handleGoogleLogin });
-                            window.google.accounts.id.renderButton(document.getElementById("google-login-btn"), { theme: "outline", size: "large" });
-                        } else { setTimeout(tryRender, 100); }
-                    };
-                    tryRender();
+                    const timer = setInterval(() => {
+                        if (window.google?.accounts?.id && document.getElementById("google-login-btn")) {
+                            window.google.accounts.id.initialize({ 
+                                client_id: GOOGLE_CLIENT_ID, 
+                                callback: window.handleGoogleLogin 
+                            });
+                            window.google.accounts.id.renderButton(
+                                document.getElementById("google-login-btn"), 
+                                { theme: "outline", size: "large", width: "250" }
+                            );
+                            clearInterval(timer);
+                        }
+                    }, 100);
+                    return () => clearInterval(timer);
                 }
-            }, [user]);
+            }, [user, fetchLogs]);
 
             const deleteLog = async (log) => {
                 if (!confirm("確定要刪除這筆紀錄嗎？")) return;
@@ -134,7 +142,6 @@
                 return { total: dates.length, streak: Math.max(maxStreak, currentStreak) };
             }, [myLogs]);
 
-            // 日曆邏輯優化
             const calendarData = useMemo(() => {
                 const year = calDate.getFullYear();
                 const month = calDate.getMonth();
@@ -158,12 +165,22 @@
 
             const isFormValid = formData.practiceDate && formData.duration && formData.reflection.trim() && formData.customName.trim();
 
-            if (loading && !user) return <div className="flex h-screen items-center justify-center text-emerald-600 font-bold">載入中...</div>;
-
+            // 修正點 3：渲染判斷邏輯優化
+            // 沒登入就直接給登入畫面，不被 loading 擋住
             if (!user) return (
                 <div className="flex flex-col items-center justify-center h-screen bg-white p-10 text-center">
-                    <h1 className="text-4xl font-black text-emerald-600 mb-4">100天禪定打卡</h1>
-                    <div id="google-login-btn"></div>
+                    <div className="mb-8">
+                        <h1 className="text-4xl font-black text-emerald-600 mb-2">100天禪定打卡</h1>
+                        <p className="text-slate-400 text-sm">請先登入 Google 帳號以開始紀錄</p>
+                    </div>
+                    <div id="google-login-btn" className="min-h-[40px]"></div>
+                </div>
+            );
+
+            // 登入後才顯示載入中
+            if (loading && logs.length === 0) return (
+                <div className="flex h-screen items-center justify-center text-emerald-600 font-bold">
+                    同步紀錄中...
                 </div>
             );
 
