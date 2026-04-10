@@ -23,8 +23,15 @@
         const { useState, useEffect, useMemo } = React;
 
         const GAS_URL = "https://script.google.com/macros/s/AKfycbylgmrDktw1X5h2d7gRiLZirQSDQLJF2N-WlsmB3eyEwAYsAqhQ9m0YF29T_ImGLDAT/exec";
-        const GOOGLE_CLIENT_ID = "898764620568-6h1uavirukt1k1vpfpvmfdbge74823vm.apps.googleusercontent.com";
+        const GOOGLE_CLIENT_ID = "898764620568-6h1uavirukt1k1vpfomfdbge74823vm.apps.googleusercontent.com";
         const CHAKRAS = ["腹式呼吸", "名色", "無始", "無明", "吉祥", "如意", "明心", "二空", "智慧", "法眼", "禪心"];
+
+        const durationColor = (min) => {
+            const m = Number(min);
+            if (m >= 60) return 'bg-purple-500 text-white';
+            if (m >= 40) return 'bg-orange-400 text-white';
+            return 'bg-emerald-500 text-white';
+        };
 
         const Icon = ({ name, className = "" }) => {
             const icons = {
@@ -59,33 +66,44 @@
                 practiceDate: new Date().toISOString().split('T')[0]
             });
 
+            const fetchLogs = async () => {
+                try {
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 8000);
+                    const res = await fetch(GAS_URL, { signal: controller.signal });
+                    clearTimeout(timer);
+                    const data = await res.json();
+                    setLogs(Array.isArray(data) ? data : []);
+                } catch (e) {
+                    console.error('fetchLogs error:', e);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
             useEffect(() => {
                 window.handleGoogleLogin = (response) => {
-                    const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-                    const loggedInUser = { email: payload.email, name: payload.name };
-                    setUser(loggedInUser);
-                    localStorage.setItem('zenUser', JSON.stringify(loggedInUser));
-                };
-
-                const saved = localStorage.getItem('zenUser');
-                if (saved) setUser(JSON.parse(saved));
-
-                const fetchData = async () => {
                     try {
-                        const controller = new AbortController();
-                        const timer = setTimeout(() => controller.abort(), 8000);
-                        const res = await fetch(GAS_URL, { signal: controller.signal });
-                        clearTimeout(timer);
-                        const data = await res.json();
-                        setLogs(Array.isArray(data) ? data : []);
-                    } catch (e) {
-                        console.error('fetchData error:', e);
-                    } finally {
-                        setLoading(false);
+                        const base64 = response.credential.split('.')[1]
+                            .replace(/-/g, '+').replace(/_/g, '/');
+                        const payload = JSON.parse(atob(base64));
+                        const loggedInUser = {
+                            email: payload.email,
+                            name: payload.name || payload.given_name || payload.email
+                        };
+                        setUser(loggedInUser);
+                        localStorage.setItem('zenUser', JSON.stringify(loggedInUser));
+                    } catch(err) {
+                        console.error('Google login parse error:', err);
                     }
                 };
 
-                fetchData();
+                const saved = localStorage.getItem('zenUser');
+                if (saved) {
+                    try { setUser(JSON.parse(saved)); } catch(e) {}
+                }
+
+                fetchLogs();
             }, []);
 
             useEffect(() => {
@@ -105,7 +123,10 @@
                 }
             }, [loading, user]);
 
-            const myLogs = useMemo(() => logs.filter(l => l && l.date && l.email === user?.email), [logs, user]);
+            const myLogs = useMemo(() =>
+                logs.filter(l => l && l.date && l.email === user?.email)
+                    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+            , [logs, user]);
 
             const filteredLogs = useMemo(() => {
                 return logs.filter(l =>
@@ -125,7 +146,30 @@
                 return { total: dates.length, streak: dates.length > 0 ? 1 : 0 };
             }, [myLogs]);
 
-            if (loading) return <div style={{display:'flex',height:'100vh',alignItems:'center',justifyContent:'center',color:'#059669',fontWeight:'bold',fontSize:'18px'}}>載入中...</div>;
+            const calendarMap = useMemo(() => {
+                const map = {};
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth();
+                myLogs.forEach(l => {
+                    const dateStr = (l.date || '').split('T')[0];
+                    const d = new Date(dateStr + 'T00:00:00');
+                    if (d.getFullYear() === year && d.getMonth() === month) {
+                        const day = d.getDate();
+                        const dur = Number(l.duration) || 0;
+                        map[day] = Math.max(map[day] || 0, dur);
+                    }
+                });
+                return map;
+            }, [myLogs]);
+
+            const isFormValid = formData.practiceDate && formData.duration && formData.reflection.trim();
+
+            if (loading) return (
+                <div style={{display:'flex',height:'100vh',alignItems:'center',justifyContent:'center',color:'#059669',fontWeight:'bold',fontSize:'18px'}}>
+                    載入中...
+                </div>
+            );
 
             if (!user) return (
                 <div className="flex flex-col items-center justify-center h-screen bg-white p-10 text-center">
@@ -153,11 +197,26 @@
                                 </div>
                                 <div className="bg-slate-50 p-6 rounded-[2rem]">
                                     <h3 className="font-bold text-slate-700 mb-4">禪定日曆</h3>
-                                    <div className="grid grid-cols-7 gap-2">
-                                        {Array.from({length: 31}).map((_, i) => {
-                                            const hasLog = myLogs.some(l => new Date(l.date).getDate() === (i + 1));
-                                            return <div key={i} className={`aspect-square flex items-center justify-center rounded-full text-[10px] font-bold ${hasLog ? 'bg-emerald-500 text-white' : 'bg-white text-slate-200'}`}>{i+1}</div>
-                                        })}
+                                    {Object.keys(calendarMap).length === 0 ? (
+                                        <p className="text-center text-slate-300 text-sm py-4">本月尚無禪定紀錄，快去打卡吧！</p>
+                                    ) : (
+                                        <div className="grid grid-cols-7 gap-2">
+                                            {Array.from({length: 31}).map((_, i) => {
+                                                const day = i + 1;
+                                                const dur = calendarMap[day];
+                                                const hasLog = dur !== undefined;
+                                                return (
+                                                    <div key={i} className={`aspect-square flex items-center justify-center rounded-full text-[10px] font-bold ${hasLog ? durationColor(dur) : 'bg-white text-slate-200'}`}>
+                                                        {day}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    <div className="flex gap-3 mt-4 justify-center text-[10px] font-bold text-slate-400">
+                                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>&lt;40分</span>
+                                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-400 inline-block"></span>40-59分</span>
+                                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-purple-500 inline-block"></span>60分+</span>
                                     </div>
                                 </div>
                             </div>
@@ -202,23 +261,53 @@
                                     {CHAKRAS.map(c=><option key={c} value={c}>{c}</option>)}
                                 </select>
                                 <textarea placeholder="今日心得..." className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold min-h-[120px]" value={formData.reflection} onChange={e=>setFormData({...formData, reflection:e.target.value})} />
+
+                                {!isFormValid && (
+                                    <p className="text-xs text-red-400 font-bold text-center">請填寫日期、時長與心得後再送出</p>
+                                )}
+
                                 <button
+                                    disabled={!isFormValid || isSubmitting}
                                     onClick={async () => {
                                         setIsSubmitting(true);
-                                        const refreshData = async () => {
-                                            const res = await fetch(GAS_URL);
-                                            const data = await res.json();
-                                            setLogs(data || []);
+                                        const newLog = {
+                                            email: user.email,
+                                            name: user.name,
+                                            date: formData.practiceDate,
+                                            duration: formData.duration,
+                                            chakra: formData.focusChakra,
+                                            reflection: formData.reflection
                                         };
-                                        await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({...formData, email: user.email, name: user.name, action: 'add'}) });
+                                        // 樂觀更新：立刻反映在畫面上
+                                        setLogs(prev => [newLog, ...prev]);
+
+                                        try {
+                                            await fetch(GAS_URL, {
+                                                method: 'POST',
+                                                mode: 'no-cors',
+                                                body: JSON.stringify({ ...newLog, action: 'add' })
+                                            });
+                                        } catch(e) {
+                                            console.error('POST error:', e);
+                                        }
+
                                         alert("紀錄成功！");
-                                        await refreshData();
-                                        setView('home');
+                                        setFormData({ duration: '', reflection: '', focusChakra: '腹式呼吸', practiceDate: new Date().toISOString().split('T')[0] });
+                                        setView('personal');
                                         setIsSubmitting(false);
+
+                                        // 3 秒後背景靜默重新同步一次
+                                        setTimeout(() => fetchLogs(), 3000);
                                     }}
-                                    className={`w-full py-5 rounded-3xl font-black text-white transition-all ${formData.duration >= 60 ? 'bg-purple-500' : formData.duration >= 40 ? 'bg-orange-500' : 'bg-emerald-600'}`}
+                                    className={`w-full py-5 rounded-3xl font-black text-white transition-all ${
+                                        !isFormValid || isSubmitting
+                                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                            : Number(formData.duration) >= 60 ? 'bg-purple-500'
+                                            : Number(formData.duration) >= 40 ? 'bg-orange-500'
+                                            : 'bg-emerald-600'
+                                    }`}
                                 >
-                                    {isSubmitting ? '同步中...' : `送出紀錄 ${formData.duration >= 60 ? '(2.0x)' : formData.duration >= 40 ? '(1.5x)' : ''}`}
+                                    {isSubmitting ? '同步中...' : `送出紀錄 ${Number(formData.duration) >= 60 ? '(2.0x)' : Number(formData.duration) >= 40 ? '(1.5x)' : ''}`}
                                 </button>
                             </div>
                         )}
@@ -226,6 +315,9 @@
                         {view === 'personal' && (
                             <div className="space-y-4">
                                 <h2 className="text-xl font-black">我的禪定日誌</h2>
+                                {myLogs.length === 0 && (
+                                    <p className="text-center text-slate-300 text-sm py-8">尚無紀錄</p>
+                                )}
                                 {myLogs.map((log, i) => (
                                     <div key={i} className="bg-slate-50 p-4 rounded-2xl">
                                         <div className="flex justify-between items-start">
@@ -247,15 +339,18 @@
                         {view === 'partners' && (
                             <div className="space-y-4">
                                 <div className="flex gap-2">
-                                    <input placeholder="搜尋人名..." className="flex-1 p-3 bg-slate-50 rounded-xl text-xs border-none" onChange={e=>setSearchTerm(e.target.value)} />
-                                    <select className="p-3 bg-slate-50 rounded-xl text-xs border-none" onChange={e=>setFilterChakra(e.target.value)}>
+                                    <input placeholder="搜尋人名..." className="flex-1 p-3 bg-slate-50 rounded-xl text-xs border-none" onChange={e=>{setSearchTerm(e.target.value); setCurrentPage(1);}} />
+                                    <select className="p-3 bg-slate-50 rounded-xl text-xs border-none" onChange={e=>{setFilterChakra(e.target.value); setCurrentPage(1);}}>
                                         <option value="">所有脈輪</option>
                                         {CHAKRAS.map(c=><option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
+                                {paginatedLogs.length === 0 && (
+                                    <p className="text-center text-slate-300 text-sm py-8">查無紀錄</p>
+                                )}
                                 <div className="space-y-3">
                                     {paginatedLogs.map((log, i) => (
-                                        <div key={i} className="border-b border-slate-50 pb-3">
+                                        <div key={i} className="border-b border-slate-100 pb-3">
                                             <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
                                                 <span>{log.name}</span><span>{(log.date || '').split('T')[0]}</span>
                                             </div>
@@ -266,8 +361,8 @@
                                 </div>
                                 <div className="flex justify-center gap-4 pt-4">
                                     <button onClick={()=>setCurrentPage(p=>Math.max(1, p-1))} className="text-xs font-bold text-emerald-600">上一頁</button>
-                                    <span className="text-xs font-bold text-slate-300">{currentPage}</span>
-                                    <button onClick={()=>setCurrentPage(p=>p+1)} className="text-xs font-bold text-emerald-600">下一頁</button>
+                                    <span className="text-xs font-bold text-slate-300">{currentPage} / {Math.max(1, Math.ceil(filteredLogs.length / 10))}</span>
+                                    <button onClick={()=>setCurrentPage(p=>Math.min(Math.ceil(filteredLogs.length/10)||1, p+1))} className="text-xs font-bold text-emerald-600">下一頁</button>
                                 </div>
                             </div>
                         )}
