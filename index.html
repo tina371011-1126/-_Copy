@@ -11,9 +11,10 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #FFFFFF; color: #334155; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #FFFFFF; color: #334155; -webkit-tap-highlight-color: transparent; }
         .nav-shadow { box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.05); }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .transition-all { transition: all 0.2s ease-in-out; }
     </style>
 </head>
 <body>
@@ -52,11 +53,7 @@
         };
 
         function App() {
-            // 修正點 1：更強健的初始化
-            const [user, setUser] = useState(() => {
-                const saved = localStorage.getItem('zenUser_v2');
-                return saved ? JSON.parse(saved) : null;
-            });
+            const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('zenUser_v2')) || null);
             const [view, setView] = useState('home');
             const [logs, setLogs] = useState([]);
             const [loading, setLoading] = useState(true);
@@ -84,10 +81,8 @@
                 }
             }, []);
 
-            // 修正點 2：整合 Google 登入邏輯與按鈕渲染
             useEffect(() => {
                 fetchLogs();
-                
                 window.handleGoogleLogin = (response) => {
                     const base64 = response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
                     const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
@@ -97,32 +92,45 @@
                     setFormData(prev => ({ ...prev, customName: loggedInUser.name }));
                     localStorage.setItem('zenUser_v2', JSON.stringify(loggedInUser));
                 };
+            }, [fetchLogs]);
 
-                // 只有在沒登入時才啟動按鈕偵測
+            useEffect(() => {
                 if (!user) {
                     const timer = setInterval(() => {
                         if (window.google?.accounts?.id && document.getElementById("google-login-btn")) {
-                            window.google.accounts.id.initialize({ 
-                                client_id: GOOGLE_CLIENT_ID, 
-                                callback: window.handleGoogleLogin 
-                            });
-                            window.google.accounts.id.renderButton(
-                                document.getElementById("google-login-btn"), 
-                                { theme: "outline", size: "large", width: "250" }
-                            );
+                            window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: window.handleGoogleLogin });
+                            window.google.accounts.id.renderButton(document.getElementById("google-login-btn"), { theme: "outline", size: "large", width: "250" });
                             clearInterval(timer);
                         }
                     }, 100);
                     return () => clearInterval(timer);
                 }
-            }, [user, fetchLogs]);
+            }, [user]);
 
+            // 加快刪除體驗：樂觀更新 + 立即同步月曆
             const deleteLog = async (log) => {
-                if (!confirm("確定要刪除這筆紀錄嗎？")) return;
-                setLogs(prev => prev.filter(l => !(l.email === log.email && l.date === log.date && l.duration === log.duration)));
+                if (!window.confirm("確定要刪除這筆紀錄嗎？此動作無法復原。")) return;
+                
+                // 1. 立即從前端狀態移除 (Optimistic Update)
+                setLogs(prev => prev.filter(l => 
+                    !(l.email === log.email && l.date === log.date && l.duration === log.duration && l.reflection === log.reflection)
+                ));
+                
+                // 2. 如果月曆展開視窗開著，同步更新它
+                if (selectedDateRecords) {
+                    setSelectedDateRecords(prev => ({
+                        ...prev,
+                        logs: prev.logs.filter(l => !(l.date === log.date && l.duration === log.duration))
+                    }));
+                }
+
+                // 3. 背景發送刪除請求
                 try {
                     await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...log, action: 'delete' }) });
-                } catch (e) { console.error(e); }
+                } catch (e) { 
+                    console.error("Delete failed:", e); 
+                    fetchLogs(); // 失敗時重新拉取資料以修正狀態
+                }
             };
 
             const myLogs = useMemo(() =>
@@ -158,18 +166,17 @@
                 return { daysInMonth, map, year, month: month + 1 };
             }, [myLogs, calDate]);
 
+            // 夥伴心得：按日期從新到舊排序
             const filteredLogs = useMemo(() => logs
-    .filter(l => 
-        l && (searchTerm === '' || (l.name || '').includes(searchTerm)) &&
-        (filterChakra === '' || l.chakra === filterChakra)
-    )
-    .sort((a, b) => b.date.localeCompare(a.date)) // 新增此行：按日期從新到舊排序
-, [logs, searchTerm, filterChakra]);
+                .filter(l => 
+                    l && (searchTerm === '' || (l.name || '').includes(searchTerm)) &&
+                    (filterChakra === '' || l.chakra === filterChakra)
+                )
+                .sort((a, b) => b.date.localeCompare(a.date))
+            , [logs, searchTerm, filterChakra]);
 
             const isFormValid = formData.practiceDate && formData.duration && formData.reflection.trim() && formData.customName.trim();
 
-            // 修正點 3：渲染判斷邏輯優化
-            // 沒登入就直接給登入畫面，不被 loading 擋住
             if (!user) return (
                 <div className="flex flex-col items-center justify-center h-screen bg-white p-10 text-center">
                     <div className="mb-8">
@@ -180,11 +187,8 @@
                 </div>
             );
 
-            // 登入後才顯示載入中
             if (loading && logs.length === 0) return (
-                <div className="flex h-screen items-center justify-center text-emerald-600 font-bold">
-                    同步紀錄中...
-                </div>
+                <div className="flex h-screen items-center justify-center text-emerald-600 font-bold">同步紀錄中...</div>
             );
 
             return (
@@ -215,7 +219,7 @@
                                             const maxDur = hasLog ? Math.max(...dayLogs.map(l => Number(l.duration))) : 0;
                                             return (
                                                 <div key={i} onClick={() => setSelectedDateRecords({ day, logs: dayLogs })}
-                                                    className={`aspect-square flex items-center justify-center rounded-full text-[10px] font-bold cursor-pointer transition-transform active:scale-90 ${hasLog ? durationColor(maxDur) : 'bg-white text-slate-200 shadow-sm'}`}>
+                                                    className={`aspect-square flex items-center justify-center rounded-full text-[10px] font-bold cursor-pointer transition-all active:scale-90 ${hasLog ? durationColor(maxDur) : 'bg-white text-slate-200 shadow-sm'}`}>
                                                     {day}
                                                 </div>
                                             );
@@ -223,13 +227,16 @@
                                     </div>
                                     
                                     {selectedDateRecords && (
-                                        <div className="mt-6 p-4 bg-white rounded-2xl border border-emerald-100">
+                                        <div className="mt-6 p-4 bg-white rounded-2xl border border-emerald-100 shadow-sm transition-all">
                                             <div className="flex justify-between items-center mb-2">
                                                 <h4 className="font-bold text-emerald-700">{selectedDateRecords.day} 日紀錄</h4>
                                                 <button onClick={() => setSelectedDateRecords(null)} className="text-slate-300 text-xs">關閉</button>
                                             </div>
                                             {selectedDateRecords.logs.length > 0 ? selectedDateRecords.logs.map((l, idx) => (
-                                                <div key={idx} className="text-xs py-1 border-b border-slate-50 last:border-0">⚡ {l.duration}min - {l.chakra}</div>
+                                                <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                                                    <span className="text-xs font-bold text-slate-600">⚡ {l.duration}min - {l.chakra}</span>
+                                                    <button onClick={() => deleteLog(l)} className="p-1 text-slate-300 hover:text-red-400"><Icon name="Trash" className="w-4 h-4" /></button>
+                                                </div>
                                             )) : <p className="text-xs text-slate-400">當日尚無紀錄</p>}
                                         </div>
                                     )}
@@ -246,7 +253,7 @@
                                         <p className="text-3xl font-black text-emerald-700">{stats.total}</p>
                                     </div>
                                     <div className="bg-orange-50 p-5 rounded-3xl text-center">
-                                        <p className="text-xs text-orange-600 font-bold">最高連續</p>
+                                        <p className="text-xs text-orange-600 font-bold">最高連續天數</p>
                                         <p className="text-3xl font-black text-orange-700">{stats.streak}天</p>
                                     </div>
                                 </div>
@@ -266,16 +273,22 @@
                                 <button disabled={!isFormValid || isSubmitting} onClick={async () => {
                                         setIsSubmitting(true);
                                         const newLog = { email: user.email, name: formData.customName, date: formData.practiceDate, duration: formData.duration, chakra: formData.focusChakra, reflection: formData.reflection };
+                                        
+                                        // 樂觀更新：立即加入列表並跳轉
                                         setLogs(prev => [newLog, ...prev]);
+                                        setView('personal');
+                                        
                                         try {
                                             await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...newLog, action: 'add' }) });
                                             setFormData(prev => ({ ...prev, duration: '', reflection: '', practiceDate: new Date().toISOString().split('T')[0] }));
-                                            setView('personal');
-                                            setTimeout(fetchLogs, 1500);
-                                        } catch(e) { console.error(e); }
+                                            setTimeout(fetchLogs, 1000);
+                                        } catch(e) { 
+                                            console.error(e); 
+                                            fetchLogs();
+                                        }
                                         setIsSubmitting(false);
                                     }}
-                                    className={`w-full py-5 rounded-3xl font-black text-white ${!isFormValid || isSubmitting ? 'bg-slate-200' : 'bg-emerald-600'}`}>
+                                    className={`w-full py-5 rounded-3xl font-black text-white transition-all ${!isFormValid || isSubmitting ? 'bg-slate-200' : 'bg-emerald-600 active:scale-95'}`}>
                                     {isSubmitting ? '同步中...' : '送出紀錄'}
                                 </button>
                             </div>
@@ -284,18 +297,18 @@
                         {view === 'personal' && (
                             <div className="space-y-4">
                                 <h2 className="text-xl font-black">我的禪定日誌</h2>
-                                {myLogs.map((log, i) => (
-                                    <div key={i} className="bg-slate-50 p-4 rounded-2xl">
+                                {myLogs.length > 0 ? myLogs.map((log, i) => (
+                                    <div key={i} className="bg-slate-50 p-4 rounded-2xl transition-all">
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <p className="text-[10px] font-bold text-emerald-600">{log.date}</p>
                                                 <p className="font-bold">{log.duration}min · {log.chakra}</p>
                                             </div>
-                                            <button onClick={() => deleteLog(log)} className="p-2 text-slate-300"><Icon name="Trash" /></button>
+                                            <button onClick={() => deleteLog(log)} className="p-2 text-slate-300 hover:text-red-400 transition-colors"><Icon name="Trash" /></button>
                                         </div>
                                         <p className="text-xs text-slate-500 mt-2 italic">「{log.reflection}」</p>
                                     </div>
-                                ))}
+                                )) : <p className="text-center text-slate-300 py-10">尚無紀錄</p>}
                             </div>
                         )}
 
@@ -328,7 +341,7 @@
 
                     <nav className="fixed bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md rounded-[2.5rem] p-2 flex justify-around items-center nav-shadow border border-slate-100">
                         {[{id:'home', icon:'Home'}, {id:'progress', icon:'Trophy'}, {id:'record', icon:'Plus'}, {id:'personal', icon:'Book'}, {id:'partners', icon:'Users'}].map(item => (
-                            <button key={item.id} onClick={()=>setView(item.id)} className={`p-4 rounded-full transition-all ${view===item.id?'bg-emerald-600 text-white shadow-lg': 'text-slate-300'}`}>
+                            <button key={item.id} onClick={()=>setView(item.id)} className={`p-4 rounded-full transition-all ${view===item.id?'bg-emerald-600 text-white shadow-lg scale-110': 'text-slate-300 hover:text-emerald-300'}`}>
                                 <Icon name={item.icon} />
                             </button>
                         ))}
