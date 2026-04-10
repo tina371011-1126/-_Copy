@@ -13,7 +13,6 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
         body { font-family: 'Noto Sans TC', sans-serif; background-color: #FFFFFF; color: #334155; }
         .nav-shadow { box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.05); }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
@@ -22,7 +21,7 @@
     <script type="text/babel" data-presets="react">
         const { useState, useEffect, useMemo } = React;
 
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxQpMyQphFALQYugZB40j8uzw3NNEqFOLKxn9T1LYgW6UT7ys4cPlqhDCwPfM-d5e0/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbz0U7O7f6Z44Ep6EQbSJEuXqJIw-wfvJZHw5IFSWyjMFtQsavZUCmf4vIVlTjHiuS4b/exec";
         const GOOGLE_CLIENT_ID = "898764620568-6h1uavirukt1k1vpfpvmfdbge74823vm.apps.googleusercontent.com";
         const CHAKRAS = ["腹式呼吸", "名色 脈輪", "無始 脈輪", "無明 脈輪", "吉祥 脈輪", "如意 脈輪", "明心 脈輪", "二空 脈輪", "智慧 脈輪", "法眼 脈輪", "禪心 脈輪"];
 
@@ -56,23 +55,21 @@
             const [logs, setLogs] = useState([]);
             const [loading, setLoading] = useState(true);
             const [isSubmitting, setIsSubmitting] = useState(false);
+            const [selectedDateRecords, setSelectedDateRecords] = useState(null);
 
             const [searchTerm, setSearchTerm] = useState('');
             const [filterChakra, setFilterChakra] = useState('');
             const [currentPage, setCurrentPage] = useState(1);
 
             const [formData, setFormData] = useState({
-                customName: '', // 新增：自定義名稱欄位
+                customName: '', 
                 duration: '', reflection: '', focusChakra: '腹式呼吸',
                 practiceDate: new Date().toISOString().split('T')[0]
             });
 
             const fetchLogs = async () => {
                 try {
-                    const controller = new AbortController();
-                    const timer = setTimeout(() => controller.abort(), 8000);
-                    const res = await fetch(GAS_URL, { signal: controller.signal });
-                    clearTimeout(timer);
+                    const res = await fetch(GAS_URL);
                     const data = await res.json();
                     setLogs(Array.isArray(data) ? data : []);
                 } catch (e) {
@@ -82,35 +79,43 @@
                 }
             };
 
+            // 處理刪除功能
+            const deleteLog = async (log) => {
+                if (!confirm("確定要刪除這筆紀錄嗎？此動作無法復原。")) return;
+                
+                // 樂觀更新 UI
+                setLogs(prev => prev.filter(l => !(l.email === log.email && l.date === log.date && l.duration === log.duration)));
+                
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: JSON.stringify({ ...log, action: 'delete' })
+                    });
+                    alert("刪除成功");
+                } catch (e) {
+                    console.error(e);
+                }
+            };
+
             useEffect(() => {
+                // Google Login Handler
                 window.handleGoogleLogin = (response) => {
-                    try {
-                        // 1. 修正亂碼問題：使用 decodeURIComponent 和 UTF-8 轉換解析 JWT
-                        const base64 = response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-                        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                        }).join(''));
-                        
-                        const payload = JSON.parse(jsonPayload);
-                        const loggedInUser = {
-                            email: payload.email,
-                            name: payload.name || payload.given_name || payload.email
-                        };
-                        setUser(loggedInUser);
-                        setFormData(prev => ({ ...prev, customName: loggedInUser.name })); // 預設帶入 Google 名稱
-                        localStorage.setItem('zenUser', JSON.stringify(loggedInUser));
-                    } catch(err) {
-                        console.error('Google login parse error:', err);
-                    }
+                    const base64 = response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                    const payload = JSON.parse(jsonPayload);
+                    const loggedInUser = { email: payload.email, name: payload.name };
+                    setUser(loggedInUser);
+                    setFormData(prev => ({ ...prev, customName: loggedInUser.name }));
+                    localStorage.setItem('zenUser_v2', JSON.stringify(loggedInUser));
                 };
 
-                const saved = localStorage.getItem('zenUser');
+                // 讀取持久化登入
+                const saved = localStorage.getItem('zenUser_v2');
                 if (saved) {
-                    try { 
-                        const parsedUser = JSON.parse(saved);
-                        setUser(parsedUser); 
-                        setFormData(prev => ({ ...prev, customName: parsedUser.name }));
-                    } catch(e) {}
+                    const parsed = JSON.parse(saved);
+                    setUser(parsed);
+                    setFormData(prev => ({ ...prev, customName: parsed.name }));
                 }
 
                 fetchLogs();
@@ -121,39 +126,40 @@
                     const tryRender = () => {
                         if (window.google && document.getElementById("google-login-btn")) {
                             window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: window.handleGoogleLogin });
-                            window.google.accounts.id.renderButton(
-                                document.getElementById("google-login-btn"),
-                                { theme: "outline", size: "large", text: "signin_with" }
-                            );
-                        } else {
-                            setTimeout(tryRender, 300);
-                        }
+                            window.google.accounts.id.renderButton(document.getElementById("google-login-btn"), { theme: "outline", size: "large" });
+                        } else { setTimeout(tryRender, 300); }
                     };
                     tryRender();
                 }
             }, [loading, user]);
 
             const myLogs = useMemo(() =>
-                logs.filter(l => l && l.date && l.email === user?.email)
+                logs.filter(l => l && l.email === user?.email)
                     .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
             , [logs, user]);
 
-            const filteredLogs = useMemo(() => {
-                return logs.filter(l =>
-                    l && l.date &&
-                    (searchTerm === '' || (l.name || '').includes(searchTerm)) &&
-                    (filterChakra === '' || l.chakra === filterChakra)
-                );
-            }, [logs, searchTerm, filterChakra]);
-
-            const paginatedLogs = useMemo(() => {
-                const start = (currentPage - 1) * 10;
-                return filteredLogs.slice(start, start + 10);
-            }, [filteredLogs, currentPage]);
-
+            // 連續天數算法：取歷史最大值，不歸零
             const stats = useMemo(() => {
-                const dates = [...new Set(myLogs.map(l => (l.date || '').split('T')[0]).filter(Boolean))].sort();
-                return { total: dates.length, streak: dates.length > 0 ? 1 : 0 };
+                const dates = [...new Set(myLogs.map(l => l.date))].sort().reverse();
+                if (dates.length === 0) return { total: 0, streak: 0 };
+                
+                let maxStreak = 0;
+                let currentStreak = 1;
+                
+                for (let i = 0; i < dates.length - 1; i++) {
+                    const d1 = new Date(dates[i]);
+                    const d2 = new Date(dates[i+1]);
+                    const diff = (d1 - d2) / (1000 * 60 * 60 * 24);
+                    
+                    if (diff === 1) {
+                        currentStreak++;
+                    } else {
+                        maxStreak = Math.max(maxStreak, currentStreak);
+                        currentStreak = 1;
+                    }
+                }
+                maxStreak = Math.max(maxStreak, currentStreak);
+                return { total: dates.length, streak: maxStreak };
             }, [myLogs]);
 
             const calendarMap = useMemo(() => {
@@ -162,30 +168,33 @@
                 const year = now.getFullYear();
                 const month = now.getMonth();
                 myLogs.forEach(l => {
-                    const dateStr = (l.date || '').split('T')[0];
-                    const d = new Date(dateStr + 'T00:00:00');
+                    const d = new Date(l.date);
                     if (d.getFullYear() === year && d.getMonth() === month) {
                         const day = d.getDate();
-                        const dur = Number(l.duration) || 0;
-                        map[day] = Math.max(map[day] || 0, dur);
+                        if (!map[day]) map[day] = [];
+                        map[day].push(l);
                     }
                 });
                 return map;
             }, [myLogs]);
 
-            // 包含 customName 在內的表單驗證
+            const filteredLogs = useMemo(() => logs.filter(l => 
+                l && (searchTerm === '' || (l.name || '').includes(searchTerm)) &&
+                (filterChakra === '' || l.chakra === filterChakra)
+            ), [logs, searchTerm, filterChakra]);
+
+            const paginatedLogs = useMemo(() => {
+                const start = (currentPage - 1) * 10;
+                return filteredLogs.slice(start, start + 10);
+            }, [filteredLogs, currentPage]);
+
             const isFormValid = formData.practiceDate && formData.duration && formData.reflection.trim() && formData.customName.trim();
 
-            if (loading) return (
-                <div style={{display:'flex',height:'100vh',alignItems:'center',justifyContent:'center',color:'#059669',fontWeight:'bold',fontSize:'18px'}}>
-                    載入中...
-                </div>
-            );
+            if (loading) return <div className="flex h-screen items-center justify-center text-emerald-600 font-bold">載入中...</div>;
 
             if (!user) return (
                 <div className="flex flex-col items-center justify-center h-screen bg-white p-10 text-center">
-                    <h1 className="text-4xl font-black text-emerald-600 mb-4">100天禪定打卡計劃</h1>
-                    <p className="text-slate-400 mb-12">「禪令忙碌的人找到寧靜」</p>
+                    <h1 className="text-4xl font-black text-emerald-600 mb-4">100天禪定打卡</h1>
                     <div id="google-login-btn"></div>
                 </div>
             );
@@ -193,9 +202,7 @@
             return (
                 <div className="max-w-md mx-auto min-h-screen bg-white pb-24">
                     <header className="p-6 pt-10 text-center border-b border-slate-50">
-                        <p className="text-xs font-medium text-slate-500 leading-relaxed mb-2">
-                            「禪令忙碌的人找到寧靜，禪令痛苦的人解脫煩惱，<br/>禪令快樂的人獲得智慧，禪令不平凡的人，明瞭平凡的真諦。」
-                        </p>
+                        <p className="text-xs font-medium text-slate-500 mb-2">「禪令忙碌的人找到寧靜」</p>
                         <p className="text-[10px] text-emerald-600 font-bold">禪宗第 85 代宗師 悟覺妙天禪師</p>
                     </header>
 
@@ -204,28 +211,43 @@
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center">
                                     <h2 className="text-2xl font-black">你好, {user.name}</h2>
-                                    <button onClick={() => {setUser(null); localStorage.clear();}} className="text-slate-300 text-xs font-bold">登出</button>
+                                    <button onClick={() => {setUser(null); localStorage.removeItem('zenUser_v2');}} className="text-slate-300 text-xs font-bold">登出</button>
                                 </div>
                                 <div className="bg-slate-50 p-6 rounded-[2rem]">
-                                    <h3 className="font-bold text-slate-700 mb-4">禪定日曆</h3>
-                                    {/* 2. 就算沒有紀錄，日曆網格也會跑出來 */}
+                                    <h3 className="font-bold text-slate-700 mb-4 text-center">本月打卡日曆 (點擊看詳情)</h3>
                                     <div className="grid grid-cols-7 gap-2">
                                         {Array.from({length: 31}).map((_, i) => {
                                             const day = i + 1;
-                                            const dur = calendarMap[day];
-                                            const hasLog = dur !== undefined;
+                                            const dayLogs = calendarMap[day] || [];
+                                            const hasLog = dayLogs.length > 0;
+                                            const maxDur = hasLog ? Math.max(...dayLogs.map(l => Number(l.duration))) : 0;
                                             return (
-                                                <div key={i} className={`aspect-square flex items-center justify-center rounded-full text-[10px] font-bold ${hasLog ? durationColor(dur) : 'bg-white text-slate-200 shadow-sm'}`}>
+                                                <div key={i} 
+                                                    onClick={() => setSelectedDateRecords({ day, logs: dayLogs })}
+                                                    className={`aspect-square flex items-center justify-center rounded-full text-[10px] font-bold cursor-pointer transition-transform active:scale-90 ${hasLog ? durationColor(maxDur) : 'bg-white text-slate-200 shadow-sm'}`}>
                                                     {day}
                                                 </div>
                                             );
                                         })}
                                     </div>
-                                    <div className="flex gap-3 mt-4 justify-center text-[10px] font-bold text-slate-400">
-                                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>&lt;40分</span>
-                                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-400 inline-block"></span>40-59分</span>
-                                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-purple-500 inline-block"></span>60分+</span>
-                                    </div>
+                                    
+                                    {selectedDateRecords && (
+                                        <div className="mt-6 p-4 bg-white rounded-2xl border border-emerald-100 animate-fade-in">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h4 className="font-bold text-emerald-700">{selectedDateRecords.day} 日禪定紀錄</h4>
+                                                <button onClick={() => setSelectedDateRecords(null)} className="text-slate-300 text-xs">關閉</button>
+                                            </div>
+                                            {selectedDateRecords.logs.length > 0 ? (
+                                                selectedDateRecords.logs.map((l, idx) => (
+                                                    <div key={idx} className="text-xs py-1 border-b border-slate-50 last:border-0">
+                                                        ⚡ {l.duration}min - {l.chakra}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-xs text-slate-400">當日尚無紀錄</p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -239,23 +261,9 @@
                                         <p className="text-3xl font-black text-emerald-700">{stats.total}</p>
                                     </div>
                                     <div className="bg-orange-50 p-5 rounded-3xl text-center">
-                                        <p className="text-xs text-orange-600 font-bold">連續挑戰</p>
+                                        <p className="text-xs text-orange-600 font-bold">最高連續</p>
                                         <p className="text-3xl font-black text-orange-700">{stats.streak}天</p>
                                     </div>
-                                </div>
-                                <div className="bg-slate-50 p-5 rounded-3xl space-y-3">
-                                    <h4 className="font-bold text-sm">成就階級</h4>
-                                    {[
-                                        {l: "Level 1", n: "建立習慣", t: 30},
-                                        {l: "Level 2", n: "穩定練習", t: 50},
-                                        {l: "Level 3", n: "高度投入", t: 70},
-                                        {l: "Level 4", n: "進階挑戰", t: 100}
-                                    ].map(lv => (
-                                        <div key={lv.l} className={`flex justify-between p-3 rounded-xl ${stats.total >= lv.t ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-slate-300'}`}>
-                                            <span className="text-xs font-bold">{lv.l} {lv.n}</span>
-                                            <span className="text-xs font-black">{lv.t}次</span>
-                                        </div>
-                                    ))}
                                 </div>
                             </div>
                         )}
@@ -263,62 +271,31 @@
                         {view === 'record' && (
                             <div className="space-y-4">
                                 <h2 className="text-xl font-black">紀錄您的禪定</h2>
-                                {/* 3. 新增自定義名稱欄位 */}
-                                <input type="text" placeholder="顯示名稱 (寫入 Excel)" className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold text-slate-600" value={formData.customName} onChange={e=>setFormData({...formData, customName:e.target.value})} />
+                                <input type="text" placeholder="顯示名稱 (手動輸入)" className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold text-slate-600" value={formData.customName} onChange={e=>setFormData({...formData, customName:e.target.value})} />
                                 <input type="date" className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold" value={formData.practiceDate} onChange={e=>setFormData({...formData, practiceDate:e.target.value})} />
                                 <input type="number" placeholder="時長 (分鐘)" className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold" value={formData.duration} onChange={e=>setFormData({...formData, duration:e.target.value})} />
                                 <select className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold" value={formData.focusChakra} onChange={e=>setFormData({...formData, focusChakra:e.target.value})}>
                                     {CHAKRAS.map(c=><option key={c} value={c}>{c}</option>)}
                                 </select>
                                 <textarea placeholder="今日心得..." className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold min-h-[120px]" value={formData.reflection} onChange={e=>setFormData({...formData, reflection:e.target.value})} />
-
-                                {!isFormValid && (
-                                    <p className="text-xs text-red-400 font-bold text-center">請完整填寫名稱、日期、時長與心得</p>
-                                )}
-
                                 <button
                                     disabled={!isFormValid || isSubmitting}
                                     onClick={async () => {
                                         setIsSubmitting(true);
-                                        const newLog = {
-                                            email: user.email,
-                                            name: formData.customName || user.name, // 傳送自定義的名稱
-                                            date: formData.practiceDate,
-                                            duration: formData.duration,
-                                            chakra: formData.focusChakra,
-                                            reflection: formData.reflection
-                                        };
-                                        
-                                        // 樂觀更新
+                                        const newLog = { email: user.email, name: formData.customName, date: formData.practiceDate, duration: formData.duration, chakra: formData.focusChakra, reflection: formData.reflection };
                                         setLogs(prev => [newLog, ...prev]);
-
                                         try {
-                                            await fetch(GAS_URL, {
-                                                method: 'POST',
-                                                mode: 'no-cors',
-                                                body: JSON.stringify({ ...newLog, action: 'add' })
-                                            });
-                                        } catch(e) {
-                                            console.error('POST error:', e);
-                                        }
-
-                                        alert("紀錄成功！");
-                                        // 保留自訂名稱，清空其他欄位
-                                        setFormData(prev => ({ ...prev, duration: '', reflection: '', focusChakra: '腹式呼吸', practiceDate: new Date().toISOString().split('T')[0] }));
-                                        setView('personal');
+                                            await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...newLog, action: 'add' }) });
+                                            alert("紀錄成功！");
+                                            setFormData(prev => ({ ...prev, duration: '', reflection: '', practiceDate: new Date().toISOString().split('T')[0] }));
+                                            setView('personal');
+                                            setTimeout(fetchLogs, 2000);
+                                        } catch(e) { console.error(e); }
                                         setIsSubmitting(false);
-
-                                        setTimeout(() => fetchLogs(), 3000);
                                     }}
-                                    className={`w-full py-5 rounded-3xl font-black text-white transition-all ${
-                                        !isFormValid || isSubmitting
-                                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                            : Number(formData.duration) >= 60 ? 'bg-purple-500'
-                                            : Number(formData.duration) >= 40 ? 'bg-orange-500'
-                                            : 'bg-emerald-600'
-                                    }`}
+                                    className={`w-full py-5 rounded-3xl font-black text-white transition-all ${!isFormValid || isSubmitting ? 'bg-slate-200' : 'bg-emerald-600'}`}
                                 >
-                                    {isSubmitting ? '同步中...' : `送出紀錄 ${Number(formData.duration) >= 60 ? '(2.0x)' : Number(formData.duration) >= 40 ? '(1.5x)' : ''}`}
+                                    {isSubmitting ? '同步中...' : '送出紀錄'}
                                 </button>
                             </div>
                         )}
@@ -326,19 +303,16 @@
                         {view === 'personal' && (
                             <div className="space-y-4">
                                 <h2 className="text-xl font-black">我的禪定日誌</h2>
-                                {myLogs.length === 0 && (
-                                    <p className="text-center text-slate-300 text-sm py-8">尚無紀錄</p>
-                                )}
+                                {myLogs.length === 0 && <p className="text-center text-slate-300 py-8">尚無紀錄</p>}
                                 {myLogs.map((log, i) => (
                                     <div key={i} className="bg-slate-50 p-4 rounded-2xl">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <p className="text-[10px] font-bold text-emerald-600">{(log.date || '').split('T')[0].replace(/-/g, '/')}</p>
+                                                <p className="text-[10px] font-bold text-emerald-600">{log.date.replace(/-/g, '/')}</p>
                                                 <p className="font-bold">{log.duration}min · {log.chakra}</p>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button className="p-2 text-slate-400"><Icon name="Edit" /></button>
-                                                <button className="p-2 text-slate-400 hover:text-red-500"><Icon name="Trash" /></button>
+                                                <button onClick={() => deleteLog(log)} className="p-2 text-slate-300 hover:text-red-500 transition-colors"><Icon name="Trash" /></button>
                                             </div>
                                         </div>
                                         <p className="text-xs text-slate-500 mt-2 italic">「{log.reflection}」</p>
@@ -350,54 +324,27 @@
                         {view === 'partners' && (
                             <div className="space-y-4">
                                 <div className="flex gap-2">
-                                    <input placeholder="搜尋人名..." className="flex-1 p-3 bg-slate-50 rounded-xl text-xs border-none font-bold" onChange={e=>{setSearchTerm(e.target.value); setCurrentPage(1);}} />
-                                    <select className="p-3 bg-slate-50 rounded-xl text-xs border-none font-bold" onChange={e=>{setFilterChakra(e.target.value); setCurrentPage(1);}}>
-                                        <option value="">所有脈輪</option>
-                                        {CHAKRAS.map(c=><option key={c} value={c}>{c}</option>)}
-                                    </select>
+                                    <input placeholder="搜尋人名..." className="flex-1 p-3 bg-slate-50 rounded-xl text-xs font-bold" onChange={e=>setSearchTerm(e.target.value)} />
                                 </div>
-                                {paginatedLogs.length === 0 && (
-                                    <p className="text-center text-slate-300 text-sm py-8">查無紀錄</p>
-                                )}
                                 <div className="space-y-3">
-                                    {/* 4. 看所有人紀錄區塊重新設計 (獨立區塊、皇冠/閃電標示、簡易日期) */}
-                                    {paginatedLogs.map((log, i) => {
-                                        const dur = Number(log.duration);
-                                        const hasCrown = dur >= 60;
-                                        const hasLightning = dur >= 40 && dur < 60;
-                                        const simpleDate = (log.date || '').split('T')[0].replace(/-/g, '/'); // 將 2026-01-03 轉為 2026/01/03
-
-                                        return (
-                                            <div key={i} className="bg-white p-4 rounded-2xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] border border-slate-100 flex flex-col gap-2">
-                                                <div className="flex justify-between items-center text-sm font-bold text-slate-700">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span>{log.name}</span>
-                                                        {hasCrown && <span title="60分以上" className="text-base leading-none">👑</span>}
-                                                        {hasLightning && <span title="40-59分" className="text-base leading-none">⚡</span>}
-                                                    </div>
-                                                    <span className="text-[11px] text-slate-400 font-medium">{simpleDate}</span>
-                                                </div>
-                                                <p className="text-xs font-bold text-slate-500">{log.duration}min · {log.chakra}</p>
-                                                <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl italic">「{log.reflection}」</p>
+                                    {paginatedLogs.map((log, i) => (
+                                        <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                                            <div className="flex justify-between items-center text-sm font-bold">
+                                                <span>{log.name} {Number(log.duration) >= 60 ? '👑' : ''}</span>
+                                                <span className="text-[10px] text-slate-400">{log.date}</span>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                                <div className="flex justify-center gap-4 pt-4">
-                                    <button onClick={()=>setCurrentPage(p=>Math.max(1, p-1))} className="text-xs font-bold text-emerald-600">上一頁</button>
-                                    <span className="text-xs font-bold text-slate-300">{currentPage} / {Math.max(1, Math.ceil(filteredLogs.length / 10))}</span>
-                                    <button onClick={()=>setCurrentPage(p=>Math.min(Math.ceil(filteredLogs.length/10)||1, p+1))} className="text-xs font-bold text-emerald-600">下一頁</button>
+                                            <p className="text-xs text-slate-500">{log.duration}min · {log.chakra}</p>
+                                            <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl mt-2 italic">「{log.reflection}」</p>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
                     </main>
 
                     <nav className="fixed bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md rounded-[2.5rem] p-2 flex justify-around items-center nav-shadow border border-slate-100">
-                        {[
-                            {id:'home', icon:'Home'}, {id:'progress', icon:'Trophy'},
-                            {id:'record', icon:'Plus'}, {id:'personal', icon:'Book'}, {id:'partners', icon:'Users'}
-                        ].map(item => (
-                            <button key={item.id} onClick={()=>setView(item.id)} className={`p-4 rounded-full transition-all ${view===item.id?'bg-emerald-600 text-white shadow-lg shadow-emerald-200': 'text-slate-300'}`}>
+                        {[{id:'home', icon:'Home'}, {id:'progress', icon:'Trophy'}, {id:'record', icon:'Plus'}, {id:'personal', icon:'Book'}, {id:'partners', icon:'Users'}].map(item => (
+                            <button key={item.id} onClick={()=>setView(item.id)} className={`p-4 rounded-full transition-all ${view===item.id?'bg-emerald-600 text-white shadow-lg': 'text-slate-300'}`}>
                                 <Icon name={item.icon} />
                             </button>
                         ))}
