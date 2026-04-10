@@ -158,10 +158,13 @@
                 return { daysInMonth, map, year, month: month + 1 };
             }, [myLogs, calDate]);
 
-            const filteredLogs = useMemo(() => logs.filter(l => 
-                l && (searchTerm === '' || (l.name || '').includes(searchTerm)) &&
-                (filterChakra === '' || l.chakra === filterChakra)
-            ), [logs, searchTerm, filterChakra]);
+            const filteredLogs = useMemo(() => logs
+    .filter(l => 
+        l && (searchTerm === '' || (l.name || '').includes(searchTerm)) &&
+        (filterChakra === '' || l.chakra === filterChakra)
+    )
+    .sort((a, b) => b.date.localeCompare(a.date)) // 新增此行：按日期從新到舊排序
+, [logs, searchTerm, filterChakra]);
 
             const isFormValid = formData.practiceDate && formData.duration && formData.reflection.trim() && formData.customName.trim();
 
