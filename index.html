@@ -61,8 +61,8 @@
                 practiceDate: new Date().toISOString().split('T')[0]
             });
 
+            // 負責處理資料獲取與本地狀態初始化
             useEffect(() => {
-                // 初始化 Google 登入
                 window.handleGoogleLogin = (response) => {
                     const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
                     const loggedInUser = { email: payload.email, name: payload.name };
@@ -70,24 +70,32 @@
                     localStorage.setItem('zenUser', JSON.stringify(loggedInUser));
                 };
 
-                if (!user && window.google) {
+                const saved = localStorage.getItem('zenUser');
+                if (saved) setUser(JSON.parse(saved));
+                
+                const fetchData = async () => {
+                    try {
+                        const res = await fetch(GAS_URL);
+                        const data = await res.json();
+                        setLogs(data || []);
+                    } catch (e) { 
+                        console.error(e); 
+                    } finally { 
+                        setLoading(false); 
+                    }
+                };
+                
+                fetchData();
+            }, []);
+
+            // 修正：必須等 loading 結束，畫面出現登入 div 後，才能渲染 Google 按鈕
+            useEffect(() => {
+                if (!loading && !user && window.google) {
                     window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: window.handleGoogleLogin });
                     const btn = document.getElementById("google-login-btn");
                     if (btn) window.google.accounts.id.renderButton(btn, { theme: "outline", size: "large", text: "signin_with" });
                 }
-
-                const saved = localStorage.getItem('zenUser');
-                if (saved) setUser(JSON.parse(saved));
-                fetchData();
-            }, [user]);
-
-            const fetchData = async () => {
-                try {
-                    const res = await fetch(GAS_URL);
-                    const data = await res.json();
-                    setLogs(data || []);
-                } catch (e) { console.error(e); } finally { setLoading(false); }
-            };
+            }, [loading, user]);
 
             // 我的紀錄
             const myLogs = useMemo(() => logs.filter(l => l.email === user?.email), [logs, user]);
@@ -199,8 +207,17 @@
                                 <button 
                                     onClick={async () => {
                                         setIsSubmitting(true);
+                                        // 為了在寫入資料後重新抓取，我們獨立宣告 fetchData
+                                        const refreshData = async () => {
+                                            const res = await fetch(GAS_URL);
+                                            const data = await res.json();
+                                            setLogs(data || []);
+                                        };
                                         await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({...formData, email: user.email, name: user.name, action: 'add'}) });
-                                        alert("紀錄成功！"); fetchData(); setView('home'); setIsSubmitting(false);
+                                        alert("紀錄成功！"); 
+                                        await refreshData(); 
+                                        setView('home'); 
+                                        setIsSubmitting(false);
                                     }} 
                                     className={`w-full py-5 rounded-3xl font-black text-white transition-all ${formData.duration >= 60 ? 'bg-purple-500' : formData.duration >= 40 ? 'bg-orange-500' : 'bg-emerald-600'}`}
                                 >
