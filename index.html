@@ -155,13 +155,24 @@
 
             const deleteLog = async (log) => {
                 if (!window.confirm("確定要刪除這筆紀錄嗎？此動作無法復原。")) return;
+
+                // 修正：使用屬性內容比對，避免因背景自動更新導致的物件參考不同而刪除失敗
+                const isMatch = (l) => l.date === log.date && l.duration === log.duration && l.chakra === log.chakra && l.reflection === log.reflection;
+
                 // 即時更新畫面
-                setLogs(prev => prev.filter(l => l !== log));
+                setLogs(prev => prev.filter(l => !isMatch(l)));
                 if (selectedDateRecords) {
-                    setSelectedDateRecords(prev => ({ ...prev, logs: prev.logs.filter(l => l !== log) }));
+                    setSelectedDateRecords(prev => {
+                        const newLogs = prev.logs.filter(l => !isMatch(l));
+                        // 如果刪除後當天已無紀錄，直接關閉彈窗
+                        if (newLogs.length === 0) return null;
+                        return { ...prev, logs: newLogs };
+                    });
                 }
-                // 背景送出，不等待
+
+                // 修正：加入刪除後 8 秒自動同步 fetchLogs，確保最新狀態
                 fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...log, action: 'delete' }) })
+                    .then(() => setTimeout(fetchLogs, 8000))
                     .catch(e => { console.error("Delete failed:", e); fetchLogs(); });
             };
 
@@ -174,15 +185,20 @@
                     chakra:     form.chakra,
                     reflection: form.reflection,
                 };
+
+                // 修正：編輯也改用屬性內容比對
+                const isMatch = (l) => l.date === originalLog.date && l.duration === originalLog.duration && l.chakra === originalLog.chakra && l.reflection === originalLog.reflection;
+
                 // 即時更新所有相關 state
-                setLogs(prev => prev.map(l => l === originalLog ? updatedLog : l));
+                setLogs(prev => prev.map(l => isMatch(l) ? updatedLog : l));
                 if (selectedDateRecords) {
                     setSelectedDateRecords(prev => ({
                         ...prev,
-                        logs: prev.logs.map(l => l === originalLog ? updatedLog : l)
+                        logs: prev.logs.map(l => isMatch(l) ? updatedLog : l)
                     }));
                 }
                 setEditingLog(null);
+                
                 // 背景送出 delete + add，等 GAS 夠穩定後再同步（8秒）
                 Promise.all([
                     fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...originalLog, action: 'delete' }) }),
@@ -190,7 +206,6 @@
                 ]).then(() => setTimeout(fetchLogs, 8000))
                   .catch(e => { console.error("Edit failed:", e); fetchLogs(); });
             };
-
             const myLogs = useMemo(() =>
                 logs.filter(l => l && l.email === user?.email)
                     .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
@@ -435,9 +450,14 @@
                         )}
                     </main>
 
-                    <nav className="fixed bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md rounded-[2.5rem] p-2 flex justify-around items-center nav-shadow border border-slate-100">
+                   <nav className="fixed bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md rounded-[2.5rem] p-2 flex justify-around items-center nav-shadow border border-slate-100">
                         {[{id:'home', icon:'Home'}, {id:'progress', icon:'Trophy'}, {id:'record', icon:'Plus'}, {id:'personal', icon:'Book'}, {id:'partners', icon:'Users'}].map(item => (
-                            <button key={item.id} onClick={()=>setView(item.id)} className={`p-4 rounded-full transition-all ${view===item.id?'bg-emerald-600 text-white shadow-lg scale-110': 'text-slate-300 hover:text-emerald-300'}`}>
+                            <button 
+                                key={item.id} 
+                                // 修正：切換頁面時強制清空月曆彈窗狀態，避免切回月曆時出現舊畫面
+                                onClick={() => { setView(item.id); setSelectedDateRecords(null); }} 
+                                className={`p-4 rounded-full transition-all ${view===item.id?'bg-emerald-600 text-white shadow-lg scale-110': 'text-slate-300 hover:text-emerald-300'}`}
+                            >
                                 <Icon name={item.icon} />
                             </button>
                         ))}
