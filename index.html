@@ -34,6 +34,14 @@
             return 'bg-emerald-500 text-white';
         };
 
+        // 修正：直接解析字串，完全避開 Date 物件的時區問題
+        const parseLocalDate = (str) => {
+            if (!str) return null;
+            const parts = String(str).replace(/\//g, '-').split('-');
+            if (parts.length < 3) return null;
+            return { year: parseInt(parts[0]), month: parseInt(parts[1]) - 1, day: parseInt(parts[2]) };
+        };
+
         const Icon = ({ name, className = "" }) => {
             const icons = {
                 Home: <><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>,
@@ -147,16 +155,14 @@
 
             const deleteLog = async (log) => {
                 if (!window.confirm("確定要刪除這筆紀錄嗎？此動作無法復原。")) return;
+                // 即時更新畫面
                 setLogs(prev => prev.filter(l => l !== log));
                 if (selectedDateRecords) {
                     setSelectedDateRecords(prev => ({ ...prev, logs: prev.logs.filter(l => l !== log) }));
                 }
-                try {
-                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...log, action: 'delete' }) });
-                } catch (e) {
-                    console.error("Delete failed:", e);
-                    fetchLogs();
-                }
+                // 背景送出，不等待
+                fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...log, action: 'delete' }) })
+                    .catch(e => { console.error("Delete failed:", e); fetchLogs(); });
             };
 
             const saveEdit = async (form) => {
@@ -168,7 +174,7 @@
                     chakra:     form.chakra,
                     reflection: form.reflection,
                 };
-                // 樂觀更新：用物件參照精準替換，不動其他筆
+                // 即時更新所有相關 state
                 setLogs(prev => prev.map(l => l === originalLog ? updatedLog : l));
                 if (selectedDateRecords) {
                     setSelectedDateRecords(prev => ({
@@ -177,20 +183,17 @@
                     }));
                 }
                 setEditingLog(null);
-                // 後端：刪舊 + 新增
-                try {
-                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...originalLog, action: 'delete' }) });
-                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...updatedLog, action: 'add' }) });
-                    setTimeout(fetchLogs, 2000);
-                } catch (e) {
-                    console.error("Edit failed:", e);
-                    fetchLogs();
-                }
+                // 背景送出 delete + add，等 GAS 夠穩定後再同步（8秒）
+                Promise.all([
+                    fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...originalLog, action: 'delete' }) }),
+                    fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...updatedLog, action: 'add' }) })
+                ]).then(() => setTimeout(fetchLogs, 8000))
+                  .catch(e => { console.error("Edit failed:", e); fetchLogs(); });
             };
 
             const myLogs = useMemo(() =>
                 logs.filter(l => l && l.email === user?.email)
-                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
             , [logs, user]);
 
             const stats = useMemo(() => {
@@ -198,24 +201,27 @@
                 if (dates.length === 0) return { total: 0, streak: 0 };
                 let maxStreak = 0, currentStreak = 1;
                 for (let i = 0; i < dates.length - 1; i++) {
-                    const diff = (new Date(dates[i]) - new Date(dates[i+1])) / (86400000);
+                    const d1 = parseLocalDate(dates[i]);
+                    const d2 = parseLocalDate(dates[i+1]);
+                    if (!d1 || !d2) continue;
+                    const diff = (new Date(d1.year, d1.month, d1.day) - new Date(d2.year, d2.month, d2.day)) / 86400000;
                     if (diff === 1) currentStreak++;
                     else { maxStreak = Math.max(maxStreak, currentStreak); currentStreak = 1; }
                 }
                 return { total: dates.length, streak: Math.max(maxStreak, currentStreak) };
             }, [myLogs]);
 
+            // 修正：用 parseLocalDate 避開時區問題，點點才會出現在正確日期
             const calendarData = useMemo(() => {
                 const year = calDate.getFullYear();
                 const month = calDate.getMonth();
                 const daysInMonth = new Date(year, month + 1, 0).getDate();
                 const map = {};
                 myLogs.forEach(l => {
-                    const d = new Date(l.date);
-                    if (d.getFullYear() === year && d.getMonth() === month) {
-                        const day = d.getDate();
-                        if (!map[day]) map[day] = [];
-                        map[day].push(l);
+                    const d = parseLocalDate(l.date);
+                    if (d && d.year === year && d.month === month) {
+                        if (!map[d.day]) map[d.day] = [];
+                        map[d.day].push(l);
                     }
                 });
                 return { daysInMonth, map, year, month: month + 1 };
@@ -226,7 +232,7 @@
                     l && (searchTerm === '' || (l.name || '').includes(searchTerm)) &&
                     (filterChakra === '' || l.chakra === filterChakra)
                 )
-                .sort((a, b) => b.date.localeCompare(a.date))
+                .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
             , [logs, searchTerm, filterChakra]);
 
             const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
@@ -300,10 +306,8 @@
                                             {selectedDateRecords.logs.length > 0 ? selectedDateRecords.logs.map((l, idx) => (
                                                 <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
                                                     <span className="text-xs font-bold text-slate-600">⚡ {l.duration}min - {l.chakra}</span>
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => setEditingLog(l)} className="p-1 text-slate-300 hover:text-emerald-500"><Icon name="Edit" className="w-4 h-4" /></button>
-                                                        <button onClick={() => deleteLog(l)} className="p-1 text-slate-300 hover:text-red-400"><Icon name="Trash" className="w-4 h-4" /></button>
-                                                    </div>
+                                                    {/* 月曆彈出視窗只保留刪除，移除編輯 */}
+                                                    <button onClick={() => deleteLog(l)} className="p-1 text-slate-300 hover:text-red-400"><Icon name="Trash" className="w-4 h-4" /></button>
                                                 </div>
                                             )) : <p className="text-xs text-slate-400">當日尚無紀錄</p>}
                                         </div>
@@ -340,18 +344,21 @@
                                 <textarea placeholder="今日心得..." className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold min-h-[120px]" value={formData.reflection} onChange={e=>setFormData({...formData, reflection:e.target.value})} />
                                 <button disabled={!isFormValid || isSubmitting} onClick={async () => {
                                         setIsSubmitting(true);
-                                        const newLog = { email: user.email, name: formData.customName, date: formData.practiceDate, duration: formData.duration, chakra: formData.focusChakra, reflection: formData.reflection };
+                                        const newLog = {
+                                            email: user.email, name: formData.customName,
+                                            // 統一儲存為 YYYY/MM/DD，和 GAS 回傳格式一致，避免重複拉取後格式跳變
+                                            date: formData.practiceDate.replace(/-/g, '/'),
+                                            duration: formData.duration, chakra: formData.focusChakra, reflection: formData.reflection
+                                        };
+                                        // 即時更新畫面
                                         setLogs(prev => [newLog, ...prev]);
                                         setView('personal');
-                                        try {
-                                            await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...newLog, action: 'add' }) });
-                                            setFormData(prev => ({ ...prev, duration: '', reflection: '', practiceDate: new Date().toISOString().split('T')[0] }));
-                                            setTimeout(fetchLogs, 1000);
-                                        } catch(e) {
-                                            console.error(e);
-                                            fetchLogs();
-                                        }
+                                        setFormData(prev => ({ ...prev, duration: '', reflection: '', practiceDate: new Date().toISOString().split('T')[0] }));
                                         setIsSubmitting(false);
+                                        // 背景送出，8秒後靜默同步確保一致
+                                        fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ ...newLog, action: 'add' }) })
+                                            .then(() => setTimeout(fetchLogs, 8000))
+                                            .catch(e => { console.error(e); fetchLogs(); });
                                     }}
                                     className={`w-full py-5 rounded-3xl font-black text-white transition-all
                                         ${!isFormValid || isSubmitting ? 'bg-slate-200' :
