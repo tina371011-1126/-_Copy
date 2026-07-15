@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>100天禪定打卡計畫</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="icon" href="data:,">
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
@@ -20,7 +21,7 @@
 <body>
     <div id="root"></div>
 
-    <script type="text/babel" data-presets="react">
+    <script type="text/babel" data-type="module" data-presets="react">
         const { useState, useEffect, useMemo, useCallback } = React;
 
         const GAS_URL = "https://script.google.com/macros/s/AKfycbz0U7O7f6Z44Ep6EQbSJEuXqJIw-wfvJZHw5IFSWyjMFtQsavZUCmf4vIVlTjHiuS4b/exec";
